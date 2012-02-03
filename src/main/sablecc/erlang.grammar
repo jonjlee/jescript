@@ -1,0 +1,96 @@
+Package jescript;
+
+Helpers
+	// From core_scan.erl -
+	// For handling ISO 8859-1 (Latin-1) we use the following type
+	// information:
+	//
+	// Dec      	Octal    	Chars   	Class
+	//   0 - 31 	000 - 037	NUL - US	control
+	//  32 - 47 	040 - 057	SPC - / 	punctuation
+	//  48 - 57 	060 - 071	0 - 9   	digit
+	//  58 - 64 	072 - 100	: - @   	punctuation
+	//  65 - 90 	101 - 132	A - Z   	uppercase
+	//  91 - 96 	133 - 140	[ - `   	punctuation
+	//  97 - 122	141 - 172	a - z   	lowercase
+	// 123 - 126	173 - 176	{ - ~   	punctuation
+	// 127 -    	177      	DEL     	control
+	// 128 - 159	200 - 237	        	control
+	// 160 - 191	240 - 277	NBSP - ¿	punctuation
+	// 192 - 214	300 - 326	À - Ö   	uppercase
+	// 215 -    	327      	×       	punctuation
+	// 216 - 222	330 - 336	Ø - Þ   	uppercase
+	// 223 - 246	337 - 366	ß - ö   	lowercase
+	// 247 -    	367      	÷       	punctuation
+	// 248 - 255	370 - 377	ø - ÿ   	lowercase
+
+	any = [0..0xffff];
+	whitespace = [[0..32]+[127..160]];                        // cr, lf, space, tab, control characters
+
+	lowercase = [[248..255] + [[223..246] + ['a'..'z']]];
+	uppercase = [[216..222] + [[192..214] + ['A'..'Z']]];
+	digit = ['0'..'9'];
+	hex = digit | [['a'..'f']+['A'..'F']];
+	octal = ['0'..'7'];
+	control = [[64..95]+[97..122]];
+	alphanum = lowercase | uppercase | digit | ['_'+'@'];
+	nonsinglequote = [any - '''];
+	nonquote = [any - '"'];
+	escapedchar = '\' [any - ['x'+'^']] | '\^' control | '\' octal octal? octal? | '\x' hex hex;
+
+Tokens
+
+	// Separators
+	lparen = '('; rparen = ')'; lbrace = '{'; rbrace = '}'; lbrack = '['; rbrack = ']';
+	dot = '.'; colon = ':'; bar = '|'; barbar = '||'; semi = ';'; comma = ','; question = '?';
+	arrow = '->'; pound = '#'; ltlt = '<<'; gtgt = '>>';
+
+	// Operators
+	plus = '+'; dash = '-'; star = '*'; slash = '/'; div = 'div'; rem = 'rem';
+	or = 'or'; xor = 'xor'; and = 'and'; andalso = 'andalso'; orelse = 'orelse';
+	bor = 'bor'; bxor = 'bxor'; bsl = 'bsl'; bsr = 'bsr'; band = 'band'; 
+	eq = '='; eqeq = '=='; neq = '/='; lt = '<'; gt = '>'; le = '<='; ge = '>=';
+	not = 'not'; bnot = 'bnot'; plusplus = '++'; minusminus = '--'; bang = '!'; larrow = '<-';
+
+	// Keywords
+	after = 'after'; begin = 'begin'; case = 'case'; catch = 'catch'; cond = 'cond';
+	end = 'end'; fun = 'fun'; if = 'if'; let = 'let'; of = 'of'; query = 'query';
+	receive = 'receive'; try = 'try'; when = 'when';
+
+	nil = '[' whitespace* ']';
+	underscore = '_';               // ("universal" pattern)
+
+	// Numbers -- from core_scan.erl:
+	// We can handle simple radix notation:
+	//   <digit>#<digits>		- the digits read in that base
+	//   <digits>				- the digits in base 10
+	//   <digits>.<digits>
+	//   <digits>.<digits>E+-<digits>
+	integer
+		= digit+
+		| digit '#' digit+;
+	float
+		= digit+ '.' digit+
+		| digit+ '.' digit+ ('e' | 'E') ('+' | '-')? digit+;
+	
+	// Atoms
+	atom
+		= lowercase alphanum*
+		| ''' nonsinglequote* ('\' ''' nonsinglequote*)* ''';
+	
+	// Variable
+	var
+		= '_' alphanum+
+		| uppercase alphanum*;
+
+	// Strings
+	char = '$' (escapedchar | any);
+	string = '"' nonquote* ('\"' nonquote*)* '"';	
+
+	// Whitespace/comments
+	whitespace = whitespace+;
+	comment = '%' [any - [10 + 13]]*;
+
+Ignored Tokens
+	whitespace,
+	comment;

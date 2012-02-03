@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>jescript</groupId>
+	<artifactId>jescript</artifactId>
+	<packaging>jar</packaging>
+	<version>0.1-SNAPSHOT</version>
+	<name>jescript</name>
+	<description>Erlang interpreter that runs on the JVM</description>
+	<url>https://github.com/jonjlee/jescript</url>
+	<scm>
+		<url>https://github.com/jonjlee/jescript</url>
+		<connection>scm:git:git@github.com:jonjlee/jescript.git</connection>
+		<developerConnection>scm:git:git@github.com:jonjlee/jescript.git</developerConnection>
+	</scm>
+	<dependencies>
+		<!-- Testing -->
+		<dependency>
+			<groupId>org.testng</groupId>
+			<artifactId>testng</artifactId>
+			<version>6.1.1</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>2.3.2</version>
+				<configuration>
+					<source>1.6</source>
+					<target>1.6</target>
+				</configuration>
+			</plugin>
+			<!-- Executable jar -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifest>
+							<addClasspath>true</addClasspath>
+							<mainClass>jescript.Console</mainClass>
+						</manifest>
+					</archive>
+				</configuration>
+			</plugin>
+			<!-- Lexer/parser generator -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>sablecc-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+</project>
