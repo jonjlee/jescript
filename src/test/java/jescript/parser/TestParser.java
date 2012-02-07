@@ -55,6 +55,7 @@ public class TestParser {
 		testModule("f(X) when true, x -> X.");
 		testModule("f(X) when is_atom(X) -> X.");
 		testModule("f(X) when is_number(X), X =/= x -> X.");
+		testModule("f(X) when (X+1 == 2) -> X.");
 	}
 	
 	private void testInput(String input) { assertValid(parse(input)); }
