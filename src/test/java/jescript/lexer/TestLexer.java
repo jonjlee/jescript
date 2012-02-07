@@ -35,8 +35,8 @@ public class TestLexer {
 
 	public void numbers() {
 		testTokens("0 1 10", TInteger.class, TInteger.class, TInteger.class);
-		testTokens("1.0 0.1 1.111", TFloat.class, TFloat.class, TFloat.class);
-		testTokens("1.0e1 1.0e+1 1.0e-1 0.1e10 1.0e+10", TFloat.class, TFloat.class, TFloat.class, TFloat.class, TFloat.class);
+		testTokens("1.0 0.1 1.111", TDecimal.class, TDecimal.class, TDecimal.class);
+		testTokens("1.0e1 1.0e+1 1.0e-1 0.1e10 1.0e+10", TDecimal.class, TDecimal.class, TDecimal.class, TDecimal.class, TDecimal.class);
 	}
 
 	public void chars() {

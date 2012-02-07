@@ -56,6 +56,10 @@ Tokens
 	after = 'after'; begin = 'begin'; case = 'case'; catch = 'catch'; cond = 'cond';
 	end = 'end'; fun = 'fun'; if = 'if'; let = 'let'; of = 'of'; query = 'query';
 	receive = 'receive'; try = 'try'; when = 'when';
+	
+	// Attributes
+	module_attr = '-module'; export_attr = '-export'; import_attr = '-import';
+	compile_attr = '-compile'; record_attr = '-record';
 
 	nil = '[' whitespace* ']';
 	underscore = '_';               // ("universal" pattern)
@@ -69,7 +73,7 @@ Tokens
 	integer
 		= digit+
 		| digit '#' digit+;
-	float
+	decimal
 		= digit+ '.' digit+
 		| digit+ '.' digit+ ('e' | 'E') ('+' | '-')? digit+;
 	
@@ -94,3 +98,50 @@ Tokens
 Ignored Tokens
 	whitespace,
 	comment;
+
+Productions
+	module
+		= file_attrs* P.module_attr header_attrs* prog_forms*;
+	
+	file_attrs = dot;
+	
+	module_attr = T.module_attr lparen atom rparen dot;
+	
+	header_attrs
+		= {export} export_attr lparen lbrack fun_names rbrack rparen dot
+		| {import} import_attr lparen [module]:atom comma lbrack fun_names rbrack rparen dot
+		| {compile} compile_attr lparen term rparen dot
+		| {record_decl} record_attr lparen [type]:atom comma lbrace record_field_decls? rbrace rparen dot
+		| {other} dash atom lparen term rparen dot;
+		
+	fun_names
+		= {one} atom slash integer
+		| {many} fun_names comma atom slash integer;
+	
+	record_field_decls
+		= {one} [name]:atom record_field_value?
+		| {many} record_field_decls comma [name]:atom record_field_value?;
+	
+	record_field_value
+		= eq expr;
+	
+	prog_forms = semi;
+	
+	expr
+		= term;
+	
+	term
+		= {atom} atom
+		| {integer} integer
+		| {decimal} decimal
+		| {char} char
+		| {string} string
+		| {list} list;
+	
+	list
+		= lbrack list_terms rbrack
+		| {nil} nil;
+	
+	list_terms
+		= {one} term
+		| {many} list_terms comma term;
