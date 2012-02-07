@@ -50,6 +50,7 @@ Tokens
 	or = 'or'; xor = 'xor'; and = 'and'; andalso = 'andalso'; orelse = 'orelse';
 	bor = 'bor'; bxor = 'bxor'; bsl = 'bsl'; bsr = 'bsr'; band = 'band'; 
 	eq = '='; eqeq = '=='; neq = '/='; lt = '<'; gt = '>'; le = '<='; ge = '>=';
+	equiv = '=:='; nequiv = '=/=';
 	not = 'not'; bnot = 'bnot'; plusplus = '++'; minusminus = '--'; bang = '!'; larrow = '<-';
 
 	// Keywords
@@ -62,7 +63,7 @@ Tokens
 	compile_attr = '-compile'; record_attr = '-record';
 
 	nil = '[' whitespace* ']';
-	underscore = '_';               // ("universal" pattern)
+	underscore = '_';    // ("universal" pattern)
 
 	// Numbers -- from core_scan.erl:
 	// We can handle simple radix notation:
@@ -100,48 +101,158 @@ Ignored Tokens
 	comment;
 
 Productions
+
+	// -------------------------------------------------------
+	// Top-level module definition
+	// -------------------------------------------------------
 	module
 		= file_attrs* P.module_attr header_attrs* prog_forms*;
 	
+	// -------------------------------------------------------
+	// Module attributes
+	// -------------------------------------------------------
 	file_attrs = dot;
-	
 	module_attr = T.module_attr lparen atom rparen dot;
-	
 	header_attrs
 		= {export} export_attr lparen lbrack fun_names rbrack rparen dot
 		| {import} import_attr lparen [module]:atom comma lbrack fun_names rbrack rparen dot
 		| {compile} compile_attr lparen term rparen dot
 		| {record_decl} record_attr lparen [type]:atom comma lbrace record_field_decls? rbrace rparen dot
 		| {other} dash atom lparen term rparen dot;
-		
+	
 	fun_names
 		= {one} atom slash integer
 		| {many} fun_names comma atom slash integer;
-	
+
+	// Records
 	record_field_decls
 		= {one} [name]:atom record_field_value?
 		| {many} record_field_decls comma [name]:atom record_field_value?;
-	
 	record_field_value
 		= eq expr;
+
+	// -------------------------------------------------------
+	// Program body
+	// -------------------------------------------------------
+	prog_forms
+		= {fun} fun_decl;
 	
-	prog_forms = semi;
-	
-	expr
-		= term;
-	
-	term
+	// Functions
+	fun_decl
+		= fun_clauses dot;
+	fun_clauses
+		= {one} fun_clause
+		| {many} fun_clauses semi fun_clause;
+	fun_clause
+		= [sym]:atom lparen patterns? rparen clause_guard? arrow exprs;
+	patterns
+		= {one} pattern
+		| {many} patterns comma pattern;
+	pattern
+		= {literal} literal
+		| {var} var
+		| {universal} underscore
+		| {tuple} lbrace patterns? rbrace
+		| {record} pound [type]:atom lbrace record_field_patterns? rbrace
+		| {list} lbrack patterns list_pattern_tail? rbrack
+		| {nil} nil;
+	record_field_patterns
+		= {one} [name]:atom eq pattern
+		| {many} record_field_patterns comma [name]:atom;
+	list_pattern_tail
+		= bar pattern;
+	clause_guard
+		= when guard;
+
+
+	// -------------------------------------------------------
+	// Guards
+	// -------------------------------------------------------
+	guard
+		= {one} guard_test
+		| {many} guard comma guard_test;
+	guard_test
 		= {atom} atom
-		| {integer} integer
-		| {decimal} decimal
-		| {char} char
-		| {string} string
+		| {recognizer} [bif]:atom lparen guard_exprs rparen
+		| {comparison} guard_term_comparison
+		| {parens} lparen guard_expr rparen;
+	guard_exprs
+		= {one} guard_expr
+		| {many} guard_exprs comma guard_expr;
+	guard_expr
+		= guard_addition_shift_expr;
+	guard_addition_shift_expr
+		= {plus} guard_addition_shift_expr plus guard_times_expr
+		| {minus} guard_addition_shift_expr dash guard_times_expr
+		| {bor} guard_addition_shift_expr bor guard_times_expr
+		| {bxor} guard_addition_shift_expr bxor guard_times_expr
+		| {bsl} guard_addition_shift_expr bsl guard_times_expr
+		| {bsr} guard_addition_shift_expr bsr guard_times_expr
+		| {simple} guard_times_expr;
+	guard_times_expr
+		= {times} guard_times_expr star guard_preop_expr
+		| {divide} guard_times_expr slash guard_preop_expr
+		| {div} guard_times_expr div guard_preop_expr
+		| {rem} guard_times_expr rem guard_preop_expr
+		| {band} guard_times_expr band guard_preop_expr
+		| {simple} guard_preop_expr;
+	guard_preop_expr
+		= {pos} plus guard_apply_expr
+		| {neg} dash guard_apply_expr
+		| {bnot} bnot guard_apply_expr
+		| {not} not guard_apply_expr
+		| {simple} guard_apply_expr;
+	guard_apply_expr
+		= {fun} atom lparen guard_exprs? rparen
+		| {record} guard_record_expr
+		| {simple} guard_primary_expr;
+	guard_record_expr
+		= guard_primary_expr? pound [name]:atom dot [field]:atom;
+	guard_primary_expr
+		= {var} var
+		| {atom} atom
+		| {nil} nil
+		| {list} lbrack guard_exprs guard_list_skeleton_tail? rbrack
+		| {record} lbrace guard_exprs? rbrace
+		| {parens} lparen guard_expr rparen;
+	guard_list_skeleton_tail
+		= bar guard_expr;
+	guard_term_comparison
+		= {lt} [lhs]:guard_expr [op]:lt [rhs]:guard_expr
+		| {le} [lhs]:guard_expr [op]:le [rhs]:guard_expr
+		| {gt} [lhs]:guard_expr [op]:gt [rhs]:guard_expr
+		| {ge} [lhs]:guard_expr [op]:ge [rhs]:guard_expr
+		| {equiv} [lhs]:guard_expr [op]:equiv [rhs]:guard_expr
+		| {nequiv} [lhs]:guard_expr [op]:nequiv [rhs]:guard_expr
+		| {eq} [lhs]:guard_expr [op]:eqeq [rhs]:guard_expr
+		| {neq} [lhs]:guard_expr [op]:neq [rhs]:guard_expr;
+
+	// -------------------------------------------------------
+	// Expressions
+	// -------------------------------------------------------
+	term
+		= expr;
+
+	exprs
+		= {one} expr
+		| {many} exprs comma expr;
+	expr
+		= {literal} literal
+		| {var} var
 		| {list} list;
 	
+	literal
+		= {integer} integer
+		| {decimal} decimal
+		| {char} char
+		| {string} strings
+		| {atom} atom;
+	strings
+		= {one} string
+		| {many} strings string;
 	list
 		= lbrack list_terms rbrack
 		| {nil} nil;
-	
 	list_terms
 		= {one} term
 		| {many} list_terms comma term;

@@ -24,8 +24,8 @@ public class TestParser {
 		testModule("-export([main/1]).");
 		testModule("-import(io, [fwrite/1]).");
 		testModule("-compile([]).\n-compile(export_all).\n-compile([export_all, 'E']).");
-		//testModule("-custom(1.1).");
-		//testInvalidInput("-module(m).\n-custom(1.1, x).");
+		testModule("-custom(1.1).");
+		testInvalidModule("-custom(1.1, x).");
 	}
 	
 	public void records() {
@@ -34,9 +34,33 @@ public class TestParser {
 		testModule("-record(person, {name = \"\", phone = [], address}).");
 	}
 	
+	public void simpleFuns() {
+		testModule("main(X) -> X.");
+		testModule("main(x) -> x.");
+		testModule("main(1) -> x.");
+		testModule("main($\\^c) -> x.");
+		testModule("main(\"ab\" \"c\") -> x.");
+		testModule("main(_) -> x.");
+		testModule("main([]) -> x.");
+		testModule("main([1,2]) -> x.");
+		testModule("main({a,b,c}) -> x.");
+		testModule("main(#person{name=\"Robert\"}) -> x.");
+
+		testModule("main(X, 1, atom) -> X.");
+		testInvalidModule("main(,) -> x.");
+	}
+	
+	public void guards() {
+		testModule("f(X) when true -> X.");
+		testModule("f(X) when true, x -> X.");
+		testModule("f(X) when is_atom(X) -> X.");
+		testModule("f(X) when is_number(X), X =/= x -> X.");
+	}
+	
 	private void testInput(String input) { assertValid(parse(input)); }
 	private void testModule(String input) { testInput("-module(m).\n" + input); }
 	private void testInvalidInput(String input) { assertInvalid(parse(input)); } 
+	private void testInvalidModule(String input) { testInvalidInput("-module(m).\n" + input); }
 
 	private void assertValid(Node parseResult) {
 		if (parseResult instanceof ParseFailed) {
@@ -65,7 +89,7 @@ public class TestParser {
 
 	private Node parse(String input) {
 		try {
-			Lexer l = new Lexer(new PushbackReader(new StringReader(input)));
+			Lexer l = new Lexer(new PushbackReader(new StringReader(input), 1024));
 			Parser p = new Parser(l);
 			Start s = p.parse();
 			return s;
