@@ -3,12 +3,15 @@ package jescript.parser;
 import jescript.node.Switch;
 import jescript.node.Token;
 
-class ParseFailed extends Token {
-	public String input;
-	public Exception e;
+public class ParseFailed extends Token {
+	private String input;
+	private Exception e;
 	public ParseFailed(String input, Exception e) {
 		this.input = input;
 		this.e = e;
+	}
+	public Exception getException() {
+		return e;
 	}
 	public String getMessage() {
 		String[] pos = e.getMessage().split("\\[|\\]|,");

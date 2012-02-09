@@ -20,21 +20,38 @@ public class TestParser {
 		testInvalidInput("-module(X).");
 	}
 	
+	public void fileAttributes() {
+		testInput("-file(\"f\", 1).-module(x).");
+		testInput("-file(\"f\", 1).\n-file(\"g\", 2).\n-module(x).");
+	}
+	
 	public void headerAttributes() {
 		testModule("-export([main/1]).");
 		testModule("-import(io, [fwrite/1]).");
+		testModule("-file(\"f\", 1).");
 		testModule("-compile([]).\n-compile(export_all).\n-compile([export_all, 'E']).");
 		testModule("-custom(1.1).");
+		testModule("-custom(f/1).");
+		testModule("-custom({}).");
+		testModule("-custom([]).");
+		testModule("-custom((x)).");
+		testModule("-custom({[1,2], x}).");
 		testInvalidModule("-custom(1.1, x).");
+		testInvalidModule("-custom(1+2).");
 	}
 	
+	public void anywhereAttributes() {
+		testModule("main(_) -> ok.\n-record(empty, {}).\nf() -> f.");
+	}
+
 	public void records() {
 		testModule("-record(empty, {}).");
 		testModule("-record(person, {name, phone, address}).");
 		testModule("-record(person, {name = \"\", phone = [], address}).");
 	}
 	
-	public void simpleFuns() {
+	public void simpleFunArgs() {
+		testModule("main() -> true.");
 		testModule("main(X) -> X.");
 		testModule("main(x) -> x.");
 		testModule("main(1) -> x.");
@@ -48,8 +65,75 @@ public class TestParser {
 
 		testModule("main(X, 1, atom) -> X.");
 		testInvalidModule("main(,) -> x.");
+		testInvalidModule("fun() -> true.");
 	}
 	
+	public void multipleFuns() {
+		testModule("main(_) -> f(x).\nf(X) -> X.");
+	}
+
+	public void funClauses() {
+		testModule("f(x) -> x; f(_) -> err.");
+	}
+	
+	public void applyExpr() {
+		testModule("main(_) -> f(x).");
+		testModule("main(_) -> mod:f(x).");
+	}
+	
+	public void simpleExpr() {
+		testExpr("x");
+		testExpr("'x x'");
+		testExpr("X");
+		testExpr("{x}");
+		testExpr("[x]");
+		testExpr("1");
+		testExpr("1.2");
+		testExpr("$x");
+		testExpr("\"x\"");
+		testExpr("(x)");
+		testExpr("[X || X <- [1]]");
+		testExpr("[X || X <- [1], X =:= 1]");
+	}
+	
+	public void matchExpr() {
+		testModule("f([H|T]) -> T.");
+		testExpr("{_,_,x,X} = Y");
+	}
+	
+	public void blocks() {
+		testExpr("begin a, b, X end");
+	}
+
+	public void ifExpr() {
+		testExpr("if x -> x; true -> y end");
+		testExpr("if\nX == 1, X < 2 -> X\nend");
+		testInvalidExpr("if X = 1 -> X end"); // illegal guard
+	}
+
+	public void caseExpr() {
+		testExpr("case X of _ -> x end");
+		testExpr("case X of _ when X > 1 -> x end");
+		testExpr("case X of\n  {X,X} -> x;\n  2 -> y;\n  _ -> z \nend");
+	}
+	
+	public void receiveExpr() {
+		testExpr("receive X -> X end");
+		testExpr("receive after 100 -> true end");
+		testExpr("receive {X,_} -> X end");
+		testExpr("receive {X,_} -> X; stop -> true end");
+		testExpr("receive {X,_} -> X after 5 -> true end");
+		testExpr("receive {X,_} -> X after (1+2)*3 -> true end");
+	}
+	
+	public void funExpr() {
+		testExpr("fun x/1");
+		testExpr("fun x:x / 1");
+		testExpr("fun(x) -> x end");
+		testExpr("fun(x,y) -> x; (_,{}) -> y end");
+		testInvalidExpr("fun (x):x / 1");
+	}
+
 	public void guards() {
 		testModule("f(X) when true -> X.");
 		testModule("f(X) when true, x -> X.");
@@ -60,13 +144,15 @@ public class TestParser {
 	
 	private void testInput(String input) { assertValid(parse(input)); }
 	private void testModule(String input) { testInput("-module(m).\n" + input); }
+	private void testExpr(String input) { testInput("-module(m).\nmain(_)->\n" + input + "."); }
 	private void testInvalidInput(String input) { assertInvalid(parse(input)); } 
 	private void testInvalidModule(String input) { testInvalidInput("-module(m).\n" + input); }
+	private void testInvalidExpr(String input) { testInvalidInput("-module(m).\nmain(_)->\n" + input + "."); }
 
 	private void assertValid(Node parseResult) {
 		if (parseResult instanceof ParseFailed) {
 			ParseFailed r = (ParseFailed) parseResult;
-			fail(r.getMessage(), r.e);
+			fail(r.getMessage(), r.getException());
 		}
 	}
 	
@@ -79,10 +165,10 @@ public class TestParser {
 			fail("Expected parse error but succeeded");
 		}
 		ParseFailed r = (ParseFailed) parseResult;
-		if (!(r.e instanceof ParserException)) {
-			fail("Expected a parse exception, but got " + r.e.getMessage(), r.e);
+		if (!(r.getException() instanceof ParserException)) {
+			fail("Expected a parse exception, but got " + r.getException().getMessage(), r.getException());
 		}
-		String[] pos = r.e.getMessage().split("\\[|\\]|,");
+		String[] pos = r.getException().getMessage().split("\\[|\\]|,");
 		int line = Integer.parseInt(pos[1]), col = Integer.parseInt(pos[2]);
 		assertTrue(linestart < 0 || (linestart <= line && lineend >= line), "\n    Error at unexpected position: " + r.getMessage());
 		assertTrue(colstart < 0 || (colstart <= col && colend >= col),      "\n    Error at unexpected position: " + r.getMessage());
@@ -93,19 +179,11 @@ public class TestParser {
 			Lexer l = new Lexer(new PushbackReader(new StringReader(input), 1024));
 			Parser p = new Parser(l);
 			Start s = p.parse();
+			LOG.debug(input + " = \n" + nodeToString(s));
 			return s;
 		} catch (Exception e) {
 			return new ParseFailed(input, e);
 		}
-	}
-	
-	private Node parseExpr(String expr) {
-		//            1        10   15
-		Node s = parse("-module(m). " + expr + ".");
-		if (!(s instanceof ParseFailed)) {
-			LOG.debug(expr + " ->\n" + nodeToString(s));
-		}
-		return s;
 	}
 
 	private String nodeToString(Node s) {
@@ -117,11 +195,11 @@ public class TestParser {
 				for (int i = 0; i < indent; i++) {
 					s.append("|  ");
 				}
-				s.append(n.getClass().toString().replaceFirst("class appel.ch03.node.A?", "")).append(getText(n));
+				s.append(n.getClass().toString().replaceFirst("class jescript.node.A?", "")).append(getText(n));
 				ast.append(s).append("\n");
 			}
 			String getText(Node n) {
-				String s = null;
+//				String s = null;
 //				if (n instanceof ANumberExpr || n instanceof ABoolExpr || n instanceof ACharExpr || n instanceof AStringExpr || n instanceof AVarExpr) {
 //					s = n.toString();
 //				} else if (n instanceof AClassDef) {

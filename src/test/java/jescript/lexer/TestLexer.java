@@ -70,12 +70,12 @@ public class TestLexer {
 		testTokens("%\n", TComment.class);
 		testTokens("% ", TComment.class);
 		testTokens("% this is a comment % ", TComment.class);
-		testTokens( "% mutli \n\n% lines", TComment.class, TComment.class);
+		testTokens("% mutli \n\n% lines", TComment.class, TComment.class);
 		testTokens("X     % inline", TVar.class, TComment.class);
 	}
 
 	private Lexer initLexer(String input) {
-		Lexer lex = new Lexer(new PushbackReader(new StringReader(input)));
+		Lexer lex = new Lexer(new PushbackReader(new StringReader(input), 1024));
 		return lex;
 	}
 
