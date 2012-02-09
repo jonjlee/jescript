@@ -3,24 +3,32 @@ package jescript.lexer;
 import java.io.IOException;
 import java.io.PushbackReader;
 import java.util.LinkedList;
-import jescript.preprocessor.lexer.Lexer;
-import jescript.preprocessor.lexer.LexerException;
+import jescript.node.Token;
+import jescript.parser.ParserException;
 import jescript.preprocessor.node.Start;
-import jescript.preprocessor.node.Token;
 import jescript.preprocessor.parser.Parser;
-import jescript.preprocessor.parser.ParserException;
 
 public class PreprocessorLexer extends Lexer {
 
-	LinkedList<Token> tokens;
-	Start ast;
+	private LinkedList<Token> tokens;
+	private Start ast;
 	
 	public PreprocessorLexer(PushbackReader in) throws ParserException, LexerException, IOException {
 		super(null);
-		Lexer l = new Lexer(in);
+		jescript.preprocessor.lexer.Lexer l = new jescript.preprocessor.lexer.Lexer(in);
 		Parser p = new Parser(l);
 		Preprocessor preprocessor = new Preprocessor();
-		ast = p.parse();
+		try {
+			ast = p.parse();
+		} catch (jescript.preprocessor.parser.ParserException e) {
+			try {
+				throw new ParserException(Preprocessor.translateToken(e.getToken()), e.getMessage());
+			} catch (Exception e1) {
+				throw new ParserException(null, e.getMessage());
+			}
+		} catch (jescript.preprocessor.lexer.LexerException e) {
+			throw new LexerException(e.getMessage());
+		}
 		ast.apply(preprocessor);
 		tokens = preprocessor.getTokens();
 	}

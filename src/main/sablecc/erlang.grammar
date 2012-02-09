@@ -61,9 +61,9 @@ Tokens
 	receive = 'receive'; try = 'try'; when = 'when';
 	
 	// Attributes
-	file_attr = '-' ignored* 'file'; module_attr = '-' ignored* 'module';
-	export_attr = '-' ignored* 'export'; import_attr = '-' ignored* 'import';
-	compile_attr = '-' ignored* 'compile'; record_attr = '-' ignored* 'record';
+	file = 'file'; module = 'module';
+	export = 'export'; import = 'import';
+	compile = 'compile'; record = 'record';
 	
 	// Define attributes will be removed by the preprocessor
 	//define_attr = '-' ignored* 'define' ignored* '(' ignored* alphanum+ ignored* ',' nonrparen* (')' ignored* nondot nonrparen*)* ')'+ ignored* '.';
@@ -112,24 +112,24 @@ Productions
 	// Top-level module definition
 	// -------------------------------------------------------
 	module
-		= file_attrs* P.module_attr header_attrs* prog_forms?;
+		= file_attrs* module_attr header_attrs* prog_forms?;
 	
 	// -------------------------------------------------------
 	// Module attributes
 	// -------------------------------------------------------
 	file_attrs
-		= file_attr lparen string comma integer rparen dot;
-	module_attr = T.module_attr lparen atom rparen dot;
+		= dash file lparen string comma integer rparen dot;
+	module_attr = dash T.module lparen atom rparen dot;
 	header_attrs
-		= {export} export_attr lparen lbrack fun_names rbrack rparen dot
-		| {import} import_attr lparen [module]:atom comma lbrack fun_names rbrack rparen dot
-		| {compile} compile_attr lparen header_attr_term rparen dot
+		= {export} dash export lparen lbrack fun_names rbrack rparen dot
+		| {import} dash import lparen [module]:atom comma lbrack fun_names rbrack rparen dot
+		| {compile} dash compile lparen header_attr_term rparen dot
 		| {anywhere} anywhere_attrs
 		| {other} dash atom lparen header_attr_term rparen dot;
 	anywhere_attrs
 		= {file} file_attrs
-		| {record_decl} record_attr lparen [type]:atom comma lbrace record_field_decls? rbrace rparen dot;
-		//| {define} define_attr;   // Define attributes are removed by the preprocessor
+		| {record_decl} dash record lparen [type]:atom comma lbrace record_field_decls? rbrace rparen dot;
+		// Define attributes are removed by the preprocessor
 	header_attr_term
 		= {literal} literal
 		| {fun} atom slash integer
@@ -293,7 +293,12 @@ Productions
 		| {decimal} decimal
 		| {char} char
 		| {string} strings
-		| {atom} atom;
+		| {atom} atom
+		| {attribute} attribute;
+	attribute
+		= {file} file | {module} T.module
+		| {export} export | {import} import
+		| {compile} compile | {record} record;
 	relational_op = {lt} lt | {gt} gt | {le} le | {ge} ge;
 	equality_op = {equiv} equiv | {nequiv} nequiv | {eq} eqeq | {neq} neq;
 	list_conc_op = {conc} plusplus | {remove} minusminus;

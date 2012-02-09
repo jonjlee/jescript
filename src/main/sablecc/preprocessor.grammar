@@ -42,9 +42,9 @@ Tokens
 	receive = 'receive'; try = 'try'; when = 'when';
 	
 	// Attributes
-	file_attr = '-' ignored* 'file'; module_attr = '-' ignored* 'module';
-	export_attr = '-' ignored* 'export'; import_attr = '-' ignored* 'import';
-	compile_attr = '-' ignored* 'compile'; record_attr = '-' ignored* 'record';
+	file = '-' ignored* 'file'; module = '-' ignored* 'module';
+	export = '-' ignored* 'export'; import = '-' ignored* 'import';
+	compile = '-' ignored* 'compile'; record = '-' ignored* 'record';
 	
 	// Define attributes will be removed by the preprocessor
 	//define_attr = '-' ignored* 'define' ignored* '(' ignored* alphanum+ ignored* ',' nonrparen* (')' ignored* nondot nonrparen*)* ')'+ ignored* '.';
@@ -97,7 +97,7 @@ Ignored Tokens
 	comment;
 
 Productions
-	prog = stmt*;
+	module = stmt*;
 	stmt
 		= {macro_def} define_attr lparen [name]:macro_name [args]:macro_args? comma [body]:macro_body_tokens* attr_end
 		| {macro_fun_apply} [name]:macro_fun_apply [args]:macro_apply_args? macro_fun_apply_end
@@ -175,8 +175,8 @@ Productions
 		| {plusplus} plusplus | {minusminus} minusminus 
 		| {bang} bang | {larrow} larrow;
 	attribute
-		= {file} file_attr | {module} module_attr | {export} export_attr | {import} import_attr
-		| {compile} compile_attr | {record} record_attr;
+		= {file} file | {module} T.module | {export} export | {import} import
+		| {compile} compile | {record} record;
 	keyword
 		= {after} after | {begin} begin | {case} case | {catch} catch | {cond} cond | {end} end 
 		| {fun} fun | {if} if | {let} let | {of} of | {query} query | {receive} receive 
