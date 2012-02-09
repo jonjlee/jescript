@@ -170,11 +170,34 @@ Productions
 		| {many} function_clauses semi [fun]:atom fun_clause;
 	fun_clause
 		= lparen patterns? rparen clause_guard? arrow exprs;
+		
+	// -------------------------------------------------------
+	// Patterns
+	// -------------------------------------------------------
 	patterns
 		= {one} pattern
 		| {many} patterns comma pattern;
 	pattern
-		= {literal} literal
+		= match_pattern;
+	match_pattern
+		= list_conc_pattern eq match_pattern
+		| {simple} list_conc_pattern;
+	list_conc_pattern
+		= [left]:primary_pattern [op]:list_conc_op [right]:list_conc_pattern
+		| {simple_numerical} addition_shift_pattern
+		| {simple} primary_pattern;
+	addition_shift_pattern
+		= {addition} [left]:addition_shift_pattern [op]:addition_op [right]:times_pattern
+		| {shift} [left]:addition_shift_pattern [op]:shift_op [right]:times_pattern
+		| {simple} times_pattern;
+	times_pattern
+		= [left]:times_pattern [op]:mult_op [right]:preop_pattern
+		| {simple} preop_pattern;
+	preop_pattern
+		= [op]:pre_op [number]:number
+		| {simple} number;
+	primary_pattern
+		= {literal} alpha
 		| {var} var
 		| {universal} underscore
 		| {tuple} lbrace patterns? rbrace
@@ -187,30 +210,30 @@ Productions
 		| {many} record_field_patterns comma [name]:atom eq pattern;
 	list_pattern_tail
 		= bar pattern;
-	clause_guard
-		= when guard_exprs;
 
 	// -------------------------------------------------------
 	// Guards
 	// -------------------------------------------------------
+	clause_guard
+		= when guard_exprs;
 	guard_exprs
 		= {one} guard_expr
 		| {many} guard_exprs comma guard_expr;
 	guard_expr
 		= guard_compare_expr;
 	guard_compare_expr
-		= {lt} [left]:guard_addition_shift_expr [op]:relational_op [right]:guard_addition_shift_expr
-		| {le} [left]:guard_addition_shift_expr [op]:equality_op [right]:guard_addition_shift_expr
+		= {relational} [left]:guard_addition_shift_expr [op]:relational_op [right]:guard_addition_shift_expr
+		| {equality} [left]:guard_addition_shift_expr [op]:equality_op [right]:guard_addition_shift_expr
 		| {simple} guard_addition_shift_expr;
 	guard_addition_shift_expr
-		= {plus} [left]:guard_addition_shift_expr [op]:addition_op [right]:guard_times_expr
-		| {minus} [left]:guard_addition_shift_expr [op]:shift_op [right]:guard_times_expr
+		= {addition} [left]:guard_addition_shift_expr [op]:addition_op [right]:guard_times_expr
+		| {shift} [left]:guard_addition_shift_expr [op]:shift_op [right]:guard_times_expr
 		| {simple} guard_times_expr;
 	guard_times_expr
-		= {times} [left]:guard_times_expr [op]:mult_op [right]:guard_preop_expr
+		= [left]:guard_times_expr [op]:mult_op [right]:guard_preop_expr
 		| {simple} guard_preop_expr;
 	guard_preop_expr
-		= {pos} [op]:pre_op [expr]:guard_apply_expr
+		= [op]:pre_op [expr]:guard_apply_expr
 		| {simple} guard_apply_expr;
 	guard_apply_expr
 		= {fun} [fun]:atom lparen [args]:guard_exprs? rparen
@@ -243,21 +266,21 @@ Productions
 		= [left]:compare_expr bang [right]:send_expr
 		| {simple} compare_expr;
 	compare_expr
-		= {lt} [left]:list_conc_expr [op]:relational_op [right]:list_conc_expr
-		| {equiv} [left]:list_conc_expr [op]:equality_op [right]:list_conc_expr
+		= {relational} [left]:list_conc_expr [op]:relational_op [right]:list_conc_expr
+		| {equality} [left]:list_conc_expr [op]:equality_op [right]:list_conc_expr
 		| {simple} list_conc_expr;
 	list_conc_expr
 		= [left]:addition_shift_expr [op]:list_conc_op [right]:list_conc_expr
 		| {simple} addition_shift_expr;
 	addition_shift_expr
-		= {plus} [left]:addition_shift_expr [op]:addition_op [right]:times_expr
-		| {minus} [left]:addition_shift_expr [op]:shift_op [right]:times_expr
+		= {addition} [left]:addition_shift_expr [op]:addition_op [right]:times_expr
+		| {shift} [left]:addition_shift_expr [op]:shift_op [right]:times_expr
 		| {simple} times_expr;
 	times_expr
-		= {times} [left]:times_expr [op]:mult_op [right]:preop_expr
+		= [left]:times_expr [op]:mult_op [right]:preop_expr
 		| {simple} preop_expr;
 	preop_expr
-		= {pos} [op]:pre_op [expr]:apply_expr
+		= [op]:pre_op [expr]:apply_expr
 		| {simple} record_expr;
 	record_expr
 		= {field} record_expr? pound [type]:atom dot [name]:atom
@@ -290,9 +313,13 @@ Productions
 	
 	// Expression helpers
 	literal
+		= {number} number
+		| {alpha} alpha;
+	number
 		= {integer} integer
-		| {decimal} decimal
-		| {char} char
+		| {decimal} decimal;
+	alpha
+		= {char} char
 		| {string} strings
 		| {atom} atom
 		| {attribute} attribute;
@@ -325,7 +352,7 @@ Productions
 		= {one} comprehension_expr
 		| {many} comprehension_exprs comma comprehension_expr;
 	comprehension_expr
-		= {generator} [pattern]:expr larrow expr
+		= {generator} [pattern]:expr larrow expr       // pattern should actually be a pattern, but this causes a reduce/reduce conflict with expr. Parser will resolve this.
 		| {filter} expr;
 	if_clauses
 		= {one} guard_exprs arrow exprs

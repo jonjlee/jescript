@@ -102,7 +102,9 @@ Productions
 		= {macro_def} define_attr lparen [name]:macro_name [args]:macro_args? comma [body]:macro_body_tokens* attr_end
 		| {macro_fun_apply} [name]:macro_fun_apply [args]:macro_apply_args? macro_fun_apply_end
 		| {macro_apply} [name]:macro_apply
-		| {other} token;
+		| {attr_end} attr_end
+		| {separator_or_keyword} separator_or_keyword
+		| {common} common_token;
 	
 	// -define() statement
 	macro_name
@@ -116,7 +118,7 @@ Productions
 	macro_body_tokens
 		= {define_attr} define_attr
 		| {separator_or_keyword} separator_or_keyword
-		| {other} common_token;
+		| {common} common_token;
 
 	// Macro application, e.g. ?MACRO(X)
 	macro_apply_args
@@ -137,7 +139,7 @@ Productions
 		| {token} balanced_expr_token;
 	balanced_expr_token
 	 	= {separator_or_keyword} balanced_expr_separator_or_keyword
-		| {other} common_token;
+		| {common} common_token;
 	balanced_expr_separator_or_keyword
 		// separator - no comma, balanced separator (e.g. parens)
 		= {dot} dot           | {colon} colon | {bar} bar     | {barbar} barbar | {semi} semi
@@ -147,10 +149,6 @@ Productions
 		| {of} of       | {try} try     | {when} when;
 
 	// Tokens recognized by main grammar
-	token
-		= {attr_end} attr_end
-		| {separator_or_keyword} separator_or_keyword
-		| {other} common_token;
 	separator_or_keyword
 		// separator
 		= {lparen} lparen | {rparen} rparen | {lbrace} lbrace     | {rbrace} rbrace | {lbrack} lbrack

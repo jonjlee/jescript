@@ -68,6 +68,19 @@ public class TestParser {
 		testInvalidModule("fun() -> true.");
 	}
 	
+	public void complexFunArgs() {
+		testModule("g(X=2 bsr 1) -> X.");
+		testModule("g(+1*-2) -> X.");
+		testModule("g([32]++\"abc\") -> X.");
+	}
+	
+	public void invalidFunArgs() {
+		testInvalidModule("g(X = (2>1)) -> X.");
+		testInvalidModule("g(X+2)) -> true.");
+		testInvalidModule("g(3++[1]) -> X.");
+		testInvalidModule("g(2==2)) -> true.");
+	}
+	
 	public void multipleFuns() {
 		testModule("main(_) -> f(x).\nf(X) -> X.");
 	}
