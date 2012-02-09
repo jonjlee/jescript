@@ -9,8 +9,8 @@ import jescript.node.TRparen;
 import jescript.node.Token;
 import jescript.preprocessor.analysis.DepthFirstAdapter;
 import jescript.preprocessor.node.ALowerMacroName;
-import jescript.preprocessor.node.AMacroApplyStmt;
-import jescript.preprocessor.node.AMacroDefStmt;
+import jescript.preprocessor.node.AMacroApplyTokens;
+import jescript.preprocessor.node.AMacroDefTokens;
 import jescript.preprocessor.node.AUnderscoreMacroName;
 import jescript.preprocessor.node.AUpperMacroName;
 import jescript.preprocessor.node.Node;
@@ -36,6 +36,8 @@ public class Preprocessor extends DepthFirstAdapter {
 
 	public static Token translateToken(jescript.preprocessor.node.Token token) {
 		Token ret = null;
+		
+		// Replace jescript.preprocessor.node. with jescript.node, but retain the class name
 		String className = token.getClass().toString();
 		className = className.replaceFirst(".*\\.", TOKEN_PACKAGE);
 		try {
@@ -75,7 +77,7 @@ public class Preprocessor extends DepthFirstAdapter {
 		tokens.add(new TRparen(node.getLine(), node.getPos()));
 		tokens.add(new TDot(node.getLine(), node.getPos()+1));
 	}
-	@Override public void caseAMacroDefStmt(AMacroDefStmt node) {
+	@Override public void caseAMacroDefTokens(AMacroDefTokens node) {
 		String name = macroNameUtil.get(node.getName());
 		LinkedList<Token> body = new LinkedList<Token>();
 		Preprocessor tokenGetter = new Preprocessor();
@@ -85,7 +87,7 @@ public class Preprocessor extends DepthFirstAdapter {
 		}
 		macros.put(name, body);
 	}
-	@Override public void caseAMacroApplyStmt(AMacroApplyStmt node) {
+	@Override public void caseAMacroApplyTokens(AMacroApplyTokens node) {
 		String name = node.getName().getText().substring(1);
 		if (macros.get(name) == null) {
 			throw new RuntimeException("Macro " + name + " not defined.");

@@ -6,6 +6,7 @@ import java.io.PushbackReader;
 import java.io.StringReader;
 import jescript.node.EOF;
 import jescript.node.TAtom;
+import jescript.node.TDash;
 import jescript.node.TDot;
 import jescript.node.TLparen;
 import jescript.node.TModule;
@@ -18,11 +19,11 @@ import org.testng.annotations.Test;
 public class TestPreprocessorLexer {
 
 	public void emptyModule() {
-		testTokens("-module(m).", TModule.class, TLparen.class, TAtom.class, TRparen.class, TDot.class);
+		testTokens("-module(m).", TDash.class, TModule.class, TLparen.class, TAtom.class, TRparen.class, TDot.class);
 	}
 	
 	public void constMacro() {
-		testTokens("-define(C, x). ?C", TAtom.class);
+		testTokens("-define(C, x). ?C.", TAtom.class, TDot.class);
 	}
 
 	private Lexer initLexer(String input) throws ParserException, LexerException, IOException {

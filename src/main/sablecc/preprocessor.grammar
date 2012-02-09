@@ -16,40 +16,40 @@ Helpers
 	alphanum = lowercase | uppercase | digit | ['_'+'@'];
 	nonsinglequote = [any - '''];
 	nonquote = [any - '"'];
-	nonrparen = [any - ')'];
-	nondot = [any - '.'];
 	escapedchar = '\' [any - ['x'+'^']] | '\^' control | '\' octal octal? octal? | '\x' hex hex;
 	comment = '%' [any - [10 + 13]]*;
 	ignored = whitespace | comment;
 
 Tokens
+
 	// Separators
-	lparen = '('; rparen = ')'; lbrace = '{'; rbrace = '}'; lbrack = '['; rbrack = ']';
-	dot = '.'; colon = ':'; bar = '|'; barbar = '||'; semi = ';'; comma = ','; question = '?';
-	arrow = '->'; pound = '#'; ltlt = '<<'; gtgt = '>>';
+	lparen = '('; rparen = ')'; lbrace = '{';    rbrace = '}'; lbrack = '[';
+	rbrack = ']'; dot = '.';    colon = ':';     bar = '|';    barbar = '||';
+	semi = ';';   comma = ',';  question = '?';  arrow = '->'; pound = '#';
+	ltlt = '<<';  gtgt = '>>';
 
 	// Operators
-	plus = '+'; dash = '-'; star = '*'; slash = '/'; div = 'div'; rem = 'rem';
-	or = 'or'; xor = 'xor'; and = 'and'; andalso = 'andalso'; orelse = 'orelse';
-	bor = 'bor'; bxor = 'bxor'; bsl = 'bsl'; bsr = 'bsr'; band = 'band'; 
-	eq = '='; eqeq = '=='; neq = '/='; lt = '<'; gt = '>'; le = '<='; ge = '>=';
-	equiv = '=:='; nequiv = '=/=';
-	not = 'not'; bnot = 'bnot'; plusplus = '++'; minusminus = '--'; bang = '!'; larrow = '<-';
+	plus = '+';        dash = '-';    star = '*';      slash = '/';       div = 'div'; 
+	rem = 'rem';       or = 'or';     xor = 'xor';     and = 'and';       andalso = 'andalso';
+	orelse = 'orelse'; bor = 'bor';   bxor = 'bxor';   bsl = 'bsl';       bsr = 'bsr'; 
+	band = 'band';     eq = '=';      eqeq = '==';     neq = '/=';        lt = '<';
+	gt = '>';          le = '<=';     ge = '>=';       equiv = '=:=';     nequiv = '=/=';
+	not = 'not';       bnot = 'bnot'; plusplus = '++'; minusminus = '--'; bang = '!';
+	larrow = '<-';
 
 	// Keywords
-	after = 'after'; begin = 'begin'; case = 'case'; catch = 'catch'; cond = 'cond';
-	end = 'end'; fun = 'fun'; if = 'if'; let = 'let'; of = 'of'; query = 'query';
-	receive = 'receive'; try = 'try'; when = 'when';
+	after = 'after';     begin = 'begin';     case = 'case';  catch = 'catch';  cond = 'cond';
+	end = 'end';         fun = 'fun';         if = 'if';      let = 'let';      of = 'of';
+	receive = 'receive'; try = 'try';    when = 'when';
 	
 	// Attributes
-	file = '-' ignored* 'file'; module = '-' ignored* 'module';
-	export = '-' ignored* 'export'; import = '-' ignored* 'import';
-	compile = '-' ignored* 'compile'; record = '-' ignored* 'record';
+	file = 'file'; module = 'module'; export = 'export'; import = 'import'; compile = 'compile';
+	record = 'record';
 	
 	// Define attributes will be removed by the preprocessor
 	//define_attr = '-' ignored* 'define' ignored* '(' ignored* alphanum+ ignored* ',' nonrparen* (')' ignored* nondot nonrparen*)* ')'+ ignored* '.';
 
-	nil = '[' whitespace? ']';
+	nil = '[' ignored* ']';
 	underscore = '_';    // ("universal" pattern)
 
 	// Numbers -- from core_scan.erl:
@@ -97,8 +97,8 @@ Ignored Tokens
 	comment;
 
 Productions
-	module = stmt*;
-	stmt
+	module = tokens*;
+	tokens
 		= {macro_def} define_attr lparen [name]:macro_name [args]:macro_args? comma [body]:macro_body_tokens* attr_end
 		| {macro_fun_apply} [name]:macro_fun_apply [args]:macro_apply_args? macro_fun_apply_end
 		| {macro_apply} [name]:macro_apply
@@ -114,12 +114,9 @@ Productions
 		= {one} var
 		| {many} macro_arg_list comma var;
 	macro_body_tokens
-		= {token} non_attr_end_tokens
-		| {define_attr} define_attr;
-	non_attr_end_tokens
-		= {separator} separator
-		| {keyword} keyword
-		| {other} non_separator_keyword_tokens;
+		= {define_attr} define_attr
+		| {separator_or_keyword} separator_or_keyword
+		| {other} common_token;
 
 	// Macro application, e.g. ?MACRO(X)
 	macro_apply_args
@@ -139,45 +136,43 @@ Productions
 		| {tokens} balanced_expr balanced_expr_token
 		| {token} balanced_expr_token;
 	balanced_expr_token
-	 	= {separator} balanced_expr_separator
-		| {keyword} balanced_expr_keyword
-		| {other} non_separator_keyword_tokens;
-	balanced_expr_separator // no comma or balanced separator (e.g. parens)
-		= {dot} dot | {colon} colon | {bar} bar | {barbar} barbar 
-		| {semi} semi | {question} question | {arrow} arrow 
-		| {pound} pound | {ltlt} ltlt | {gtgt} gtgt;
-	balanced_expr_keyword   // no balanced keywords (e.g. begin/end) 
-		= {after} after | {catch} catch | {cond} cond
-		| {fun} fun | {let} let | {of} of | {try} try | {when} when;
-	
-	// Helpers
+	 	= {separator_or_keyword} balanced_expr_separator_or_keyword
+		| {other} common_token;
+	balanced_expr_separator_or_keyword
+		// separator - no comma, balanced separator (e.g. parens)
+		= {dot} dot           | {colon} colon | {bar} bar     | {barbar} barbar | {semi} semi
+		| {question} question | {arrow} arrow | {pound} pound | {ltlt} ltlt     | {gtgt} gtgt
+		// keyword - no balanced keywords (e.g. begin/end)
+		| {after} after | {catch} catch | {cond} cond | {fun} fun | {let} let
+		| {of} of       | {try} try     | {when} when;
+
+	// Tokens recognized by main grammar
 	token
 		= {attr_end} attr_end
-		| {separator} separator
-		| {keyword} keyword
-		| {other} non_separator_keyword_tokens;
-	non_separator_keyword_tokens
-		= {operator} operator | {attribute} attribute | {nil} nil
-		| {universal} underscore | {integer} integer | {decimal} decimal | {atom} atom
-		| {var} var | {char} char | {string} string;
-	separator
-		= {lparen} lparen | {rparen} rparen | {lbrace} lbrace | {rbrace} rbrace
-		| {lbrack} lbrack | {rbrack} rbrack | {dot} dot | {colon} colon | {bar} bar | {barbar} barbar 
-		| {semi} semi | {comma} comma | {question} question | {arrow} arrow 
-		| {pound} pound | {ltlt} ltlt | {gtgt} gtgt;
-	operator
-		= {plus} plus | {dash} dash | {star} star | {slash} slash | {div} div | {rem} rem 
-		| {or} or | {xor} xor | {and} and | {andalso} andalso | {orelse} orelse 
-		| {bor} bor | {bxor} bxor | {bsl} bsl | {bsr} bsr | {band} band 
-		| {eq} eq | {eqeq} eqeq | {neq} neq | {lt} lt | {gt} gt | {le} le | {ge} ge 
-		| {equiv} equiv | {nequiv} nequiv 
-		| {not} not | {bnot} bnot 
-		| {plusplus} plusplus | {minusminus} minusminus 
-		| {bang} bang | {larrow} larrow;
-	attribute
-		= {file} file | {module} T.module | {export} export | {import} import
-		| {compile} compile | {record} record;
-	keyword
-		= {after} after | {begin} begin | {case} case | {catch} catch | {cond} cond | {end} end 
-		| {fun} fun | {if} if | {let} let | {of} of | {query} query | {receive} receive 
-		| {try} try | {when} when;
+		| {separator_or_keyword} separator_or_keyword
+		| {other} common_token;
+	separator_or_keyword
+		// separator
+		= {lparen} lparen | {rparen} rparen | {lbrace} lbrace     | {rbrace} rbrace | {lbrack} lbrack
+		| {rbrack} rbrack | {dot} dot       | {colon} colon       | {bar} bar       | {barbar} barbar 
+		| {semi} semi     | {comma} comma   | {question} question | {arrow} arrow   | {pound} pound
+		| {ltlt} ltlt     | {gtgt} gtgt
+		// keyword
+		| {after} after     | {begin} begin     | {case} case | {catch} catch | {cond} cond
+		| {end} end         | {fun} fun         | {if} if     | {let} let     | {of} of
+		| {receive} receive | {try} try   | {when} when;
+	common_token
+		// operator
+		= {plus} plus     | {dash} dash | {star} star         | {slash} slash           | {div} div
+		| {rem} rem       | {or} or     | {xor} xor           | {and} and               | {andalso} andalso
+		| {orelse} orelse | {bor} bor   | {bxor} bxor         | {bsl} bsl               | {bsr} bsr
+		| {band} band     | {eq} eq     | {eqeq} eqeq         | {neq} neq               | {lt} lt
+		| {gt} gt         | {le} le     | {ge} ge             | {equiv} equiv           | {nequiv} nequiv 
+		| {not} not       | {bnot} bnot | {plusplus} plusplus | {minusminus} minusminus | {bang} bang
+		| {larrow} larrow
+		// attribute
+		| {file} file | {module} T.module | {export} export | {import} import | {compile} compile
+		| {record} record
+		// literal
+		| {nil} nil | {universal} underscore | {integer} integer | {decimal} decimal | {atom} atom
+		| {var} var | {char} char            | {string} string;

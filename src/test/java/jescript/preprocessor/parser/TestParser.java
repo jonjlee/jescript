@@ -20,9 +20,10 @@ public class TestParser {
 		testModule("-define(x,x).");
 		testModule("-define(CONST,\"abcd\").");
 
-		testModule("-define(x,x))."); // even number of closing parens
+		testModule("-define(x,x)).");  // even number of closing parens
+		testModule("-define(x,x)))."); // odd number
 		testModule("-define(x,x X \"ab\ncd\")))).");
-		testModule("-\t\ndefine ( \tx , x\t\n  )))). )\n .");
+		testModule("-\t\ndefine ( \tx , x\t\n  )))) x. )\n .");
 	}
 
 	public void ignoresComments() {
@@ -70,7 +71,6 @@ public class TestParser {
 		program = "-module(m).-define(X(),x).f()->[?X()].";
 		s = parse(program);
 		assertValid(s);
-		LOG.debug(printTokens(s));
 		assertEquals(nodeToString(s), program);
 	}
 
@@ -116,10 +116,6 @@ public class TestParser {
 						tokens.append("(").append(((Token) node).getText()).append(")");
 					tokens.append(" ");
 				}
-			}
-			@Override public void caseTAttrEnd(TAttrEnd node) {
-				this.defaultCase(new TRparen(node.getLine(), node.getPos()));
-				this.defaultCase(new TDot(node.getLine(), node.getPos()+1));
 			}
 		});
 		return tokens.toString();

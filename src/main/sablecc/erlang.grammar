@@ -43,27 +43,28 @@ Helpers
 Tokens
 
 	// Separators
-	lparen = '('; rparen = ')'; lbrace = '{'; rbrace = '}'; lbrack = '['; rbrack = ']';
-	dot = '.'; colon = ':'; bar = '|'; barbar = '||'; semi = ';'; comma = ','; question = '?';
-	arrow = '->'; pound = '#'; ltlt = '<<'; gtgt = '>>';
+	lparen = '('; rparen = ')'; lbrace = '{';    rbrace = '}'; lbrack = '[';
+	rbrack = ']'; dot = '.';    colon = ':';     bar = '|';    barbar = '||';
+	semi = ';';   comma = ',';  question = '?';  arrow = '->'; pound = '#';
+	ltlt = '<<';  gtgt = '>>';
 
 	// Operators
-	plus = '+'; dash = '-'; star = '*'; slash = '/'; div = 'div'; rem = 'rem';
-	or = 'or'; xor = 'xor'; and = 'and'; andalso = 'andalso'; orelse = 'orelse';
-	bor = 'bor'; bxor = 'bxor'; bsl = 'bsl'; bsr = 'bsr'; band = 'band'; 
-	eq = '='; eqeq = '=='; neq = '/='; lt = '<'; gt = '>'; le = '<='; ge = '>=';
-	equiv = '=:='; nequiv = '=/=';
-	not = 'not'; bnot = 'bnot'; plusplus = '++'; minusminus = '--'; bang = '!'; larrow = '<-';
+	plus = '+';        dash = '-';    star = '*';      slash = '/';       div = 'div'; 
+	rem = 'rem';       or = 'or';     xor = 'xor';     and = 'and';       andalso = 'andalso';
+	orelse = 'orelse'; bor = 'bor';   bxor = 'bxor';   bsl = 'bsl';       bsr = 'bsr'; 
+	band = 'band';     eq = '=';      eqeq = '==';     neq = '/=';        lt = '<';
+	gt = '>';          le = '<=';     ge = '>=';       equiv = '=:=';     nequiv = '=/=';
+	not = 'not';       bnot = 'bnot'; plusplus = '++'; minusminus = '--'; bang = '!';
+	larrow = '<-';
 
 	// Keywords
-	after = 'after'; begin = 'begin'; case = 'case'; catch = 'catch'; cond = 'cond';
-	end = 'end'; fun = 'fun'; if = 'if'; let = 'let'; of = 'of'; query = 'query';
-	receive = 'receive'; try = 'try'; when = 'when';
+	after = 'after';     begin = 'begin';     case = 'case';  catch = 'catch';  cond = 'cond';
+	end = 'end';         fun = 'fun';         if = 'if';      let = 'let';      of = 'of';
+	receive = 'receive'; try = 'try';    when = 'when';
 	
 	// Attributes
-	file = 'file'; module = 'module';
-	export = 'export'; import = 'import';
-	compile = 'compile'; record = 'record';
+	file = 'file'; module = 'module'; export = 'export'; import = 'import'; compile = 'compile';
+	record = 'record';
 	
 	// Define attributes will be removed by the preprocessor
 	//define_attr = '-' ignored* 'define' ignored* '(' ignored* alphanum+ ignored* ',' nonrparen* (')' ignored* nondot nonrparen*)* ')'+ ignored* '.';

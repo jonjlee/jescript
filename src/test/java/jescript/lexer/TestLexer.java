@@ -23,7 +23,7 @@ public class TestLexer {
 		// See Reference Manual, S1.5 (http://www.erlang.org/doc/reference_manual/introduction.html) 
 		testTokens("after and andalso band begin bnot bor bsl bsr bxor", TAfter.class, TAnd.class, TAndalso.class, TBand.class, TBegin.class, TBnot.class, TBor.class, TBsl.class, TBsr.class, TBxor.class);
 		testTokens("case catch cond div end fun if let not of or orelse", TCase.class, TCatch.class, TCond.class, TDiv.class, TEnd.class, TFun.class, TIf.class, TLet.class, TNot.class, TOf.class, TOr.class, TOrelse.class);
-		testTokens("query receive rem try when xor", TQuery.class, TReceive.class, TRem.class, TTry.class, TWhen.class, TXor.class);
+		testTokens("receive rem try when xor", TReceive.class, TRem.class, TTry.class, TWhen.class, TXor.class);
 	}
 	
 	public void operators() {
