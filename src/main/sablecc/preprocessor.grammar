@@ -1,0 +1,151 @@
+Package jescript.preprocessor;
+
+// ---------------------------------------------------------------------------
+// Helper and Tokens sections should be copied directly from erlang.grammar
+// ---------------------------------------------------------------------------
+Helpers
+	any = [0..0xffff];
+	whitespace = [[0..32]+[127..160]]+;                        // cr, lf, space, tab, control characters
+
+	lowercase = [[248..255] + [[223..246] + ['a'..'z']]];
+	uppercase = [[216..222] + [[192..214] + ['A'..'Z']]];
+	digit = ['0'..'9'];
+	hex = digit | [['a'..'f']+['A'..'F']];
+	octal = ['0'..'7'];
+	control = [[64..95]+[97..122]];
+	alphanum = lowercase | uppercase | digit | ['_'+'@'];
+	nonsinglequote = [any - '''];
+	nonquote = [any - '"'];
+	nonrparen = [any - ')'];
+	nondot = [any - '.'];
+	escapedchar = '\' [any - ['x'+'^']] | '\^' control | '\' octal octal? octal? | '\x' hex hex;
+	comment = '%' [any - [10 + 13]]*;
+	ignored = whitespace | comment;
+
+Tokens
+	// Separators
+	lparen = '('; rparen = ')'; lbrace = '{'; rbrace = '}'; lbrack = '['; rbrack = ']';
+	dot = '.'; colon = ':'; bar = '|'; barbar = '||'; semi = ';'; comma = ','; question = '?';
+	arrow = '->'; pound = '#'; ltlt = '<<'; gtgt = '>>';
+
+	// Operators
+	plus = '+'; dash = '-'; star = '*'; slash = '/'; div = 'div'; rem = 'rem';
+	or = 'or'; xor = 'xor'; and = 'and'; andalso = 'andalso'; orelse = 'orelse';
+	bor = 'bor'; bxor = 'bxor'; bsl = 'bsl'; bsr = 'bsr'; band = 'band'; 
+	eq = '='; eqeq = '=='; neq = '/='; lt = '<'; gt = '>'; le = '<='; ge = '>=';
+	equiv = '=:='; nequiv = '=/=';
+	not = 'not'; bnot = 'bnot'; plusplus = '++'; minusminus = '--'; bang = '!'; larrow = '<-';
+
+	// Keywords
+	after = 'after'; begin = 'begin'; case = 'case'; catch = 'catch'; cond = 'cond';
+	end = 'end'; fun = 'fun'; if = 'if'; let = 'let'; of = 'of'; query = 'query';
+	receive = 'receive'; try = 'try'; when = 'when';
+	
+	// Attributes
+	file_attr = '-' ignored* 'file'; module_attr = '-' ignored* 'module';
+	export_attr = '-' ignored* 'export'; import_attr = '-' ignored* 'import';
+	compile_attr = '-' ignored* 'compile'; record_attr = '-' ignored* 'record';
+	
+	// Define attributes will be removed by the preprocessor
+	//define_attr = '-' ignored* 'define' ignored* '(' ignored* alphanum+ ignored* ',' nonrparen* (')' ignored* nondot nonrparen*)* ')'+ ignored* '.';
+
+	nil = '[' whitespace? ']';
+	underscore = '_';    // ("universal" pattern)
+
+	// Numbers -- from core_scan.erl:
+	// We can handle simple radix notation:
+	//   <digit>#<digits>		- the digits read in that base
+	//   <digits>				- the digits in base 10
+	//   <digits>.<digits>
+	//   <digits>.<digits>E+-<digits>
+	integer
+		= digit+
+		| digit '#' digit+;
+	decimal
+		= digit+ '.' digit+
+		| digit+ '.' digit+ ('e' | 'E') ('+' | '-')? digit+;
+	
+	// Atoms
+	atom
+		= lowercase alphanum*
+		| ''' nonsinglequote* ('\' ''' nonsinglequote*)* ''';
+	
+	// Variable
+	var
+		= '_' alphanum+
+		| uppercase alphanum*;
+
+	// Strings
+	char = '$' (escapedchar | any);
+	string = '"' nonquote* ('\"' nonquote*)* '"';	
+
+	// Whitespace/comments
+	whitespace = whitespace;
+	comment = comment;
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Preprocessor grammar
+// ---------------------------------------------------------------------------
+define_attr = '-' ignored* 'define';
+attr_end = ')' ignored* '.';
+
+Ignored Tokens
+	comment;
+
+Productions
+	file
+		= stmt*;
+	stmt
+		= {define} define_attr [x1]:x? lparen [x2]:x? define_name [x3]:x? comma define_body_tokens* attr_end
+		| {other} token;
+	define_name
+		= {lower} atom
+		| {upper} var
+		| {underscore} underscore;
+	define_body_tokens
+		= {token} non_end_tokens
+		| {define_attr} define_attr;
+	token
+		= {attr_end} attr_end
+		| {other} non_end_tokens;
+	non_end_tokens
+		= {separator} separator
+		| {operator} operator
+		| {attribute} attribute
+		| {keyword} keyword
+		| {nil} nil
+		| {universal} underscore
+		| {integer} integer
+		| {decimal} decimal
+		| {atom} atom
+		| {var} var
+		| {char} char
+		| {string} string
+		| {whitespace} whitespace;
+	x = whitespace;
+	separator
+		= {lparen} lparen | {rparen} rparen| {lbrace} lbrace | {rbrace} rbrace | {lbrack} lbrack | {rbrack} rbrack 
+		| {dot} dot | {colon} colon | {bar} bar | {barbar} barbar 
+		| {semi} semi | {comma} comma | {question} question | {arrow} arrow 
+		| {pound} pound | {ltlt} ltlt | {gtgt} gtgt;
+	operator
+		= {plus} plus | {dash} dash | {star} star | {slash} slash | {div} div | {rem} rem 
+		| {or} or | {xor} xor | {and} and | {andalso} andalso | {orelse} orelse 
+		| {bor} bor | {bxor} bxor | {bsl} bsl | {bsr} bsr | {band} band 
+		| {eq} eq | {eqeq} eqeq | {neq} neq | {lt} lt | {gt} gt | {le} le | {ge} ge 
+		| {equiv} equiv | {nequiv} nequiv 
+		| {not} not | {bnot} bnot 
+		| {plusplus} plusplus | {minusminus} minusminus 
+		| {bang} bang | {larrow} larrow;
+	attribute
+		= {file} file_attr
+		| {module} module_attr
+		| {export} export_attr
+		| {import} import_attr
+		| {compile} compile_attr
+		| {record} record_attr;
+	keyword
+		= {after} after | {begin} begin | {case} case | {catch} catch | {cond} cond | {end} end 
+		| {fun} fun | {if} if | {let} let | {of} of | {query} query | {receive} receive 
+		| {try} try | {when} when;
