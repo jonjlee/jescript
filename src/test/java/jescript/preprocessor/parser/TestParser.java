@@ -3,12 +3,10 @@ package jescript.preprocessor.parser;
 import static org.testng.Assert.*;
 import java.io.PushbackReader;
 import java.io.StringReader;
+import jescript.lexer.PreprocessorLexer;
 import jescript.preprocessor.analysis.DepthFirstAdapter;
 import jescript.preprocessor.lexer.Lexer;
-import jescript.preprocessor.node.Node;
-import jescript.preprocessor.node.Start;
-import jescript.preprocessor.node.Switch;
-import jescript.preprocessor.node.Token;
+import jescript.preprocessor.node.*;
 import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
 
@@ -43,9 +41,9 @@ public class TestParser {
 		String program = 
 			"-module(m).\n" +
 			"-define(CONST,\"ab\").\n" +
-			"f(X) -> io:format(\"~s~p\", [x, X]).\n" +
+			"f(X) -> io:format(\"~s~p\", [x, ?CONST]).\n" +
 			"-define(CONST2,x).\n" +
-			"g(X) -> io:format(\"~s~p\", [x, X]).\n";
+			"g(X) -> io:format(\"~s~p\", [x, ?CONST2]).\n";
 		String processed = program.replaceAll("[ \n]", "");
 		Node s = parse(program);
 		assertValid(s);
@@ -53,24 +51,24 @@ public class TestParser {
 	}
 	
 	public void constantMacros() {
-		String program = "-module(m).define(C,x).f(X)->?C.";
+		String program = "-module(m).-define(C,x).f(X)->?C.";
 		Node s = parse(program);
 		assertValid(s);
 		assertEquals(nodeToString(s), program);
 	}
 
 	public void funMacros() {
-		String program = "-module(m).define(X(),x).f()->?X().";
+		String program = "-module(m).-define(X(),x).f()->?X().";
 		Node s = parse(program);
 		assertValid(s);
 		assertEquals(nodeToString(s), program);
 
-		program = "-module(m).define(X(A,B),{A,B}).f()->?X(a,b).";
+		program = "-module(m).-define(X(A,B),{A,B}).f()->?X(a,b).";
 		s = parse(program);
 		assertValid(s);
 		assertEquals(nodeToString(s), program);
 
-		program = "-module(m).define(X(),x).f()->[?X()].";
+		program = "-module(m).-define(X(),x).f()->[?X()].";
 		s = parse(program);
 		assertValid(s);
 		assertEquals(nodeToString(s), program);
@@ -88,10 +86,9 @@ public class TestParser {
 
 	private Node parse(String input) {
 		try {
-			Lexer l = new Lexer(new PushbackReader(new StringReader(input), 1024));
-			Parser p = new Parser(l);
-			Start s = p.parse();
-			LOG.debug("\n" + input + " = \n" + nodeToString(s) + " = \n" + printAst(s));
+			PreprocessorLexer l = new PreprocessorLexer(new PushbackReader(new StringReader(input), 1024));
+			Start s = l.getOriginalAst();
+			LOG.debug("\n" + input + " = \n" + nodeToString(s) + " = \n" + printTokens(l) + "= \n" + printAst(s));
 			return s;
 		} catch (Exception e) {
 			return new ParseFailed(input, e);
@@ -107,6 +104,21 @@ public class TestParser {
 			}
 		});
 		return s.toString();
+	}
+	private String printTokens(Lexer l) {
+		try {
+			final StringBuilder tokens = new StringBuilder();
+			while (l.peek() != null) {
+				Token t = l.next();
+				tokens.append(t.getClass().toString().replaceFirst("class jescript.preprocessor.node.T?", ""));
+				if (t instanceof TAtom || t instanceof TVar || t instanceof TChar || t instanceof TString || t instanceof TInteger || t instanceof TDecimal)
+					tokens.append("(").append(((Token) t).getText()).append(")");
+				tokens.append(" ");
+			}
+			return tokens.toString();
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 	}
 	private String printAst(Node s) {
 		final StringBuilder ast = new StringBuilder();
