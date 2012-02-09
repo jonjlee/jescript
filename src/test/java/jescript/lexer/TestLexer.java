@@ -1,6 +1,5 @@
 package jescript.lexer;
 
-import static org.testng.Assert.*;
 import java.io.PushbackReader;
 import java.io.StringReader;
 import jescript.node.*;
@@ -74,33 +73,11 @@ public class TestLexer {
 		testTokens("X     % inline", TVar.class, TComment.class);
 	}
 
-	private Lexer initLexer(String input) {
-		Lexer lex = new Lexer(new PushbackReader(new StringReader(input), 1024));
-		return lex;
+	private static Lexer initLexer(String input) {
+		return new Lexer(new PushbackReader(new StringReader(input), 1024));
 	}
 
 	private void testTokens(String input, Class<?>... expectedTokens) {
-		Lexer lex = initLexer(input);
-		Class<?> tokClass;
-		int i = 0;
-
-		try {
-			for (i = 0; i < expectedTokens.length; i++) {
-					// Get next token, skipping whitespace unless explicitly specified in expected token list
-					do {
-						tokClass = lex.next().getClass();
-					} while (tokClass == TWhitespace.class && expectedTokens[i] != TWhitespace.class);
-					assertEquals(tokClass, expectedTokens[i], "Token " + i + " of '" + input + "' ");
-			}
-			// skip over any trailing whitespace
-			do {
-				tokClass = lex.next().getClass();
-			} while (tokClass == TWhitespace.class);
-			
-			// and assert that the whole string was consumed
-			assertEquals(tokClass, EOF.class);
-		} catch (Exception e) {
-			fail("Unable to get token " + (i+1) + " (of " + expectedTokens.length + ") from " + input, e);
-		}
+		Util.testTokens(initLexer(input), input, expectedTokens);
 	}
 }

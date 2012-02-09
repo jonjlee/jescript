@@ -100,8 +100,7 @@ public class TestParser {
 		final StringBuilder s = new StringBuilder();
 		n.apply(new DepthFirstAdapter() {
 			@Override public void defaultCase(Node node) {
-				if (node instanceof Token)
-					s.append(((Token) node).getText());
+				if (node instanceof Token) { s.append(((Token) node).getText()); }
 			}
 		});
 		return s.toString();
@@ -149,15 +148,9 @@ public class TestParser {
 
 class ParseFailed extends Token {
 	jescript.parser.ParseFailed parseFailed;
-	public ParseFailed(String input, Exception e) {
-		parseFailed = new jescript.parser.ParseFailed(input, e);
-	}
-	public String getMessage() {
-		return parseFailed.getMessage();
-	}
-	public Exception getException() {
-		return parseFailed.getException();
-	}
+	public ParseFailed(String input, Exception e) { parseFailed = new jescript.parser.ParseFailed(input, e); }
+	public String getMessage() { return parseFailed.getMessage(); }
+	public Exception getException() { return parseFailed.getException(); }
 	@Override public void apply(Switch sw) { throw new UnsupportedOperationException(); }
 	@Override public Object clone() { throw new UnsupportedOperationException(); }
 }

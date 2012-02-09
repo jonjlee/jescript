@@ -16,10 +16,10 @@ public class ParseFailed extends Token {
 	public String getMessage() {
 		String[] pos = e.getMessage().split("\\[|\\]|,");
 		int row = -1, col = -1;
-		if (e instanceof ParserException) {
+		try {
 			row = Integer.parseInt(pos[1]);
 			col = Integer.parseInt(pos[2]);
-		}
+		} catch (NumberFormatException e) { /* ignore */ }
 
 		String indent = "       ";
 		StringBuilder s = new StringBuilder("\n").append(indent).append(e.getMessage()).append(":\n");
