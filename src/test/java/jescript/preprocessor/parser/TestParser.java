@@ -3,7 +3,6 @@ package jescript.preprocessor.parser;
 import static org.testng.Assert.*;
 import java.io.PushbackReader;
 import java.io.StringReader;
-import jescript.lexer.PreprocessorLexer;
 import jescript.preprocessor.analysis.DepthFirstAdapter;
 import jescript.preprocessor.lexer.Lexer;
 import jescript.preprocessor.node.*;
@@ -71,6 +70,7 @@ public class TestParser {
 		program = "-module(m).-define(X(),x).f()->[?X()].";
 		s = parse(program);
 		assertValid(s);
+		LOG.debug(printTokens(s));
 		assertEquals(nodeToString(s), program);
 	}
 
@@ -86,9 +86,10 @@ public class TestParser {
 
 	private Node parse(String input) {
 		try {
-			PreprocessorLexer l = new PreprocessorLexer(new PushbackReader(new StringReader(input), 1024));
-			Start s = l.getOriginalAst();
-			LOG.debug("\n" + input + " = \n" + nodeToString(s) + " = \n" + printTokens(l) + "= \n" + printAst(s));
+			Lexer l = new Lexer(new PushbackReader(new StringReader(input), 1024));
+			Parser p = new Parser(l);
+			Start s = p.parse();
+			LOG.debug("\n" + input + " = \n" + nodeToString(s) + " = \n" + printTokens(s) + "= \n" + printAst(s));
 			return s;
 		} catch (Exception e) {
 			return new ParseFailed(input, e);
@@ -105,20 +106,23 @@ public class TestParser {
 		});
 		return s.toString();
 	}
-	private String printTokens(Lexer l) {
-		try {
-			final StringBuilder tokens = new StringBuilder();
-			while (l.peek() != null) {
-				Token t = l.next();
-				tokens.append(t.getClass().toString().replaceFirst("class jescript.preprocessor.node.T?", ""));
-				if (t instanceof TAtom || t instanceof TVar || t instanceof TChar || t instanceof TString || t instanceof TInteger || t instanceof TDecimal)
-					tokens.append("(").append(((Token) t).getText()).append(")");
-				tokens.append(" ");
+	private String printTokens(Node s) {
+		final StringBuilder tokens = new StringBuilder();
+		s.apply(new DepthFirstAdapter() {
+			public void defaultCase(Node node) {
+				if (node instanceof Token) {
+					tokens.append(node.getClass().toString().replaceFirst("class jescript.preprocessor.node.T?", ""));
+					if (node instanceof TAtom || node instanceof TVar || node instanceof TChar || node instanceof TString || node instanceof TInteger || node instanceof TDecimal)
+						tokens.append("(").append(((Token) node).getText()).append(")");
+					tokens.append(" ");
+				}
 			}
-			return tokens.toString();
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
+			@Override public void caseTAttrEnd(TAttrEnd node) {
+				this.defaultCase(new TRparen(node.getLine(), node.getPos()));
+				this.defaultCase(new TDot(node.getLine(), node.getPos()+1));
+			}
+		});
+		return tokens.toString();
 	}
 	private String printAst(Node s) {
 		final StringBuilder ast = new StringBuilder();
