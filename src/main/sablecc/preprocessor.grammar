@@ -89,44 +89,81 @@ Tokens
 // ---------------------------------------------------------------------------
 define_attr = '-' ignored* 'define';
 attr_end = ')' ignored* '.';
+macro_fun_apply = '?' alphanum+ ignored* '(';
+macro_apply = '?' alphanum+;
 
 Ignored Tokens
+	whitespace,
 	comment;
 
 Productions
 	file
 		= stmt*;
 	stmt
-		= {define} define_attr [x1]:x? lparen [x2]:x? define_name [x3]:x? comma define_body_tokens* attr_end
+		= {define} define_attr lparen define_name define_args? comma define_body_tokens* attr_end
+		| {macro_fun_apply} macro_fun_apply macro_apply_args? macro_fun_apply_end
+		| {macro_apply} macro_apply 
 		| {other} token;
+	
+	// -define() statement
 	define_name
 		= {lower} atom
 		| {upper} var
 		| {underscore} underscore;
+	define_args = lparen define_arg_list? rparen;
+	define_arg_list
+		= {one} var
+		| {many} define_arg_list comma var;
 	define_body_tokens
-		= {token} non_end_tokens
+		= {token} non_attr_end_tokens
 		| {define_attr} define_attr;
+	non_attr_end_tokens
+		= {separator} separator
+		| {keyword} keyword
+		| {other} non_separator_keyword_tokens;
+
+	// Macro application, e.g. ?MACRO(X)
+	macro_apply_args
+		= {one} balanced_expr
+		| {many} macro_apply_args comma balanced_expr;
+	macro_fun_apply_end
+		= {paren} rparen
+		| {stmt} attr_end;
+	balanced_expr
+		= {paren} lparen balanced_expr? rparen
+		| {list} lbrack balanced_expr? rbrack
+		| {tuple} lbrace balanced_expr? rbrace
+		| {block} begin balanced_expr? end
+		| {if} if balanced_expr? end
+		| {case} case balanced_expr? end
+		| {receive} receive balanced_expr? end
+		| {tokens} balanced_expr balanced_expr_token
+		| {token} balanced_expr_token;
+	balanced_expr_token
+	 	= {separator} balanced_expr_separator
+		| {keyword} balanced_expr_keyword
+		| {other} non_separator_keyword_tokens;
+	balanced_expr_separator // no comma or balanced separator (e.g. parens)
+		= {dot} dot | {colon} colon | {bar} bar | {barbar} barbar 
+		| {semi} semi | {question} question | {arrow} arrow 
+		| {pound} pound | {ltlt} ltlt | {gtgt} gtgt;
+	balanced_expr_keyword   // no balanced keywords (e.g. begin/end) 
+		= {after} after | {catch} catch | {cond} cond
+		| {fun} fun | {let} let | {of} of | {try} try | {when} when;
+	
+	// Helpers
 	token
 		= {attr_end} attr_end
-		| {other} non_end_tokens;
-	non_end_tokens
-		= {separator} separator
-		| {operator} operator
-		| {attribute} attribute
+		| {separator} separator
 		| {keyword} keyword
-		| {nil} nil
-		| {universal} underscore
-		| {integer} integer
-		| {decimal} decimal
-		| {atom} atom
-		| {var} var
-		| {char} char
-		| {string} string
-		| {whitespace} whitespace;
-	x = whitespace;
+		| {other} non_separator_keyword_tokens;
+	non_separator_keyword_tokens
+		= {operator} operator | {attribute} attribute | {nil} nil
+		| {universal} underscore | {integer} integer | {decimal} decimal | {atom} atom
+		| {var} var | {char} char | {string} string;
 	separator
-		= {lparen} lparen | {rparen} rparen| {lbrace} lbrace | {rbrace} rbrace | {lbrack} lbrack | {rbrack} rbrack 
-		| {dot} dot | {colon} colon | {bar} bar | {barbar} barbar 
+		= {lparen} lparen | {rparen} rparen | {lbrace} lbrace | {rbrace} rbrace
+		| {lbrack} lbrack | {rbrack} rbrack | {dot} dot | {colon} colon | {bar} bar | {barbar} barbar 
 		| {semi} semi | {comma} comma | {question} question | {arrow} arrow 
 		| {pound} pound | {ltlt} ltlt | {gtgt} gtgt;
 	operator
@@ -139,12 +176,8 @@ Productions
 		| {plusplus} plusplus | {minusminus} minusminus 
 		| {bang} bang | {larrow} larrow;
 	attribute
-		= {file} file_attr
-		| {module} module_attr
-		| {export} export_attr
-		| {import} import_attr
-		| {compile} compile_attr
-		| {record} record_attr;
+		= {file} file_attr | {module} module_attr | {export} export_attr | {import} import_attr
+		| {compile} compile_attr | {record} record_attr;
 	keyword
 		= {after} after | {begin} begin | {case} case | {catch} catch | {cond} cond | {end} end 
 		| {fun} fun | {if} if | {let} let | {of} of | {query} query | {receive} receive 

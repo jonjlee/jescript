@@ -33,26 +33,47 @@ public class TestParser {
 				"-module(m).\n" +
 				"-define(CONST,\"ab\" % a comment\n" +
 				"              \"cd\").";
-			String processed = program.replaceAll("%[^\n]*",	"");
+			String processed = program.replaceAll("%[^\n]*", "").replaceAll("[ \n]", "");
 			Node s = parse(program);
 			assertValid(s);
 			assertEquals(nodeToString(s), processed);
 	}
 	
-	public void constantMacros() {
+	public void macrosAnywhere() {
 		String program = 
 			"-module(m).\n" +
-			"-define(CONST,\"ab\" \n" +
-			"              \"cd\").\n" +
-			"f(X) -> io:format(\"~s ~p\", [?CONST, X]).\n" +
+			"-define(CONST,\"ab\").\n" +
+			"f(X) -> io:format(\"~s~p\", [x, X]).\n" +
 			"-define(CONST2,x).\n" +
-			"g(X) -> io:format(\"~s ~p\", [?CONST, ?CONST2]).\n";
-		String processed = program;
-		//String processed = program.replaceAll("?CONST",	"\"ab\" \n              \"cd\"");
-		//processed = program.replaceAll("?CONST2",	"x");
+			"g(X) -> io:format(\"~s~p\", [x, X]).\n";
+		String processed = program.replaceAll("[ \n]", "");
 		Node s = parse(program);
 		assertValid(s);
 		assertEquals(nodeToString(s), processed);
+	}
+	
+	public void constantMacros() {
+		String program = "-module(m).define(C,x).f(X)->?C.";
+		Node s = parse(program);
+		assertValid(s);
+		assertEquals(nodeToString(s), program);
+	}
+
+	public void funMacros() {
+		String program = "-module(m).define(X(),x).f()->?X().";
+		Node s = parse(program);
+		assertValid(s);
+		assertEquals(nodeToString(s), program);
+
+		program = "-module(m).define(X(A,B),{A,B}).f()->?X(a,b).";
+		s = parse(program);
+		assertValid(s);
+		assertEquals(nodeToString(s), program);
+
+		program = "-module(m).define(X(),x).f()->[?X()].";
+		s = parse(program);
+		assertValid(s);
+		assertEquals(nodeToString(s), program);
 	}
 
 	private void testInput(String input) { assertValid(parse(input)); }
