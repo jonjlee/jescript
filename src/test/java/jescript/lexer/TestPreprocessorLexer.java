@@ -20,6 +20,10 @@ public class TestPreprocessorLexer {
 	public void constMacro() {
 		testTokens("-define(C, x). ?C.", TAtom.class, TDot.class);
 	}
+	
+	public void funMacro() {
+		testTokens("-define(C(), x). ?C().", TAtom.class, TDot.class);
+	}
 
 	private Lexer initLexer(String input) {
 		try {
