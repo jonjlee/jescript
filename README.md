@@ -42,3 +42,5 @@ References
 
 * [An introduction to Core Erlang](www.erlang.se/workshop/carlsson.ps)
 * [Core Erlang 1.0.3 language specification](http://www.it.uu.se/research/group/hipe/cerl/)
+* [Desugaring list comprehensions and pattern matching (lecture)](http://web.mit.edu/6.827/www/old/lectures/L09-Lists2Print.pdf)
+* [v3_core.erl](https://github.com/erlang/otp/blob/master/lib/compiler/src/v3_core.erl) translates from normal to core Erlang.
