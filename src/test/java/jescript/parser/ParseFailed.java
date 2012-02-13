@@ -14,12 +14,16 @@ public class ParseFailed extends Token {
 		return e;
 	}
 	public String getMessage() {
+		if (e.getMessage() == null) {
+			return null;
+		}
+	
 		String[] pos = e.getMessage().split("\\[|\\]|,");
 		int row = -1, col = -1;
 		try {
 			row = Integer.parseInt(pos[1]);
 			col = Integer.parseInt(pos[2]);
-		} catch (NumberFormatException e) { /* ignore */ }
+		} catch (Exception e) { /* ignore */ }
 
 		String indent = "       ";
 		StringBuilder s = new StringBuilder("\n").append(indent).append(e.getMessage()).append(":\n");

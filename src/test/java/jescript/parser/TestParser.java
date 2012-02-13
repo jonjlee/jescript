@@ -1,9 +1,8 @@
 package jescript.parser;
 
-import static org.testng.Assert.*;
+import static jescript.parser.Util.*;
 import java.io.PushbackReader;
 import java.io.StringReader;
-import jescript.analysis.DepthFirstAdapter;
 import jescript.lexer.Lexer;
 import jescript.node.Node;
 import jescript.node.Start;
@@ -162,31 +161,6 @@ public class TestParser {
 	private void testInvalidModule(String input) { testInvalidInput("-module(m).\n" + input); }
 	private void testInvalidExpr(String input) { testInvalidInput("-module(m).\nmain(_)->\n" + input + "."); }
 
-	private void assertValid(Node parseResult) {
-		if (parseResult instanceof ParseFailed) {
-			ParseFailed r = (ParseFailed) parseResult;
-			fail(r.getMessage(), r.getException());
-		}
-	}
-	
-	private void assertInvalid(Node parseResult) {
-		assertInvalid(parseResult, -1, -1, -1, -1);
-	}
-
-	private void assertInvalid(Node parseResult, int linestart, int lineend, int colstart, int colend) {
-		if (!(parseResult instanceof ParseFailed)) {
-			fail("Expected parse error but succeeded");
-		}
-		ParseFailed r = (ParseFailed) parseResult;
-		if (!(r.getException() instanceof ParserException)) {
-			fail("Expected a parse exception, but got " + r.getException().getMessage(), r.getException());
-		}
-		String[] pos = r.getException().getMessage().split("\\[|\\]|,");
-		int line = Integer.parseInt(pos[1]), col = Integer.parseInt(pos[2]);
-		assertTrue(linestart < 0 || (linestart <= line && lineend >= line), "\n    Error at unexpected position: " + r.getMessage());
-		assertTrue(colstart < 0 || (colstart <= col && colend >= col),      "\n    Error at unexpected position: " + r.getMessage());
-	}
-
 	private Node parse(String input) {
 		try {
 			Lexer l = new Lexer(new PushbackReader(new StringReader(input), 1024));
@@ -199,40 +173,4 @@ public class TestParser {
 		}
 	}
 
-	private String nodeToString(Node s) {
-		final StringBuilder ast = new StringBuilder();
-		s.apply(new DepthFirstAdapter() {
-			int indent = 0;
-			void append(Node n) {
-				StringBuilder s = new StringBuilder();
-				for (int i = 0; i < indent; i++) {
-					s.append("|  ");
-				}
-				s.append(n.getClass().toString().replaceFirst("class jescript.node.A?", "")).append(getText(n));
-				ast.append(s).append("\n");
-			}
-			String getText(Node n) {
-//				String s = null;
-//				if (n instanceof ANumberExpr || n instanceof ABoolExpr || n instanceof ACharExpr || n instanceof AStringExpr || n instanceof AVarExpr) {
-//					s = n.toString();
-//				} else if (n instanceof AClassDef) {
-//					s = ((AClassDef) n).getId().toString();
-//				} else if (n instanceof AFunDef) {
-//					s = ((AFunDef) n).getId().toString().trim() + "(" + ((AFunDef) n).getFormal().toString() + ")";
-//				}
-//				if (s != null) {
-//					return "(" + s.trim() + ")";
-//				}
-				return "";
-			}
-			@Override public void defaultIn(Node node) {
-				append(node);
-				indent++;
-			}
-			@Override public void defaultOut(Node node) {
-				indent--;
-			}
-		});
-		return ast.toString();
-	}
 }

@@ -119,18 +119,18 @@ Productions
     // Module attributes
     // -------------------------------------------------------
     file_attrs {-> expr}
-        = dash file lparen string comma integer rparen dot {-> New expr.attr(New attr.file(string, integer))};
+        = dash file lparen string comma integer rparen dot {-> New expr.file_attr(string, integer)};
     module_attr {-> expr}
-        = dash T.module lparen atom rparen dot {-> New expr.attr(New attr.module(atom))};
+        = dash T.module lparen atom rparen dot {-> New expr.module_attr(atom)};
     header_attrs {-> expr}
-        = {export} dash export lparen lbrack fun_names rbrack rparen dot {-> New expr.attr(New attr.export([fun_names.fun_arity]))}
-        | {import} dash import lparen [module]:atom comma lbrack fun_names rbrack rparen dot {-> New expr.attr(New attr.import(module, [fun_names.fun_arity]))}
-        | {compile} dash compile lparen header_attr_term rparen dot {-> New expr.attr(New attr.compile(header_attr_term.expr))}
+        = {export} dash export lparen lbrack fun_names rbrack rparen dot {-> New expr.export_attr([fun_names.fun_arity])}
+        | {import} dash import lparen [module]:atom comma lbrack fun_names rbrack rparen dot {-> New expr.import_attr(module, [fun_names.fun_arity])}
+        | {compile} dash compile lparen header_attr_term rparen dot {-> New expr.compile_attr(header_attr_term.expr)}
         | {anywhere} anywhere_attrs {-> anywhere_attrs.expr}
-        | {other} dash atom lparen header_attr_term rparen dot {-> New expr.attr(New attr.other(header_attr_term.expr))};
+        | {other} dash atom lparen header_attr_term rparen dot {-> New expr.custom_attr(header_attr_term.expr)};
     anywhere_attrs {-> expr}
         = {file} file_attrs {-> file_attrs.expr}
-        | {record_decl} dash record lparen [type]:atom comma lbrace record_field_decls? rbrace rparen dot {-> New expr.attr(New attr.record(type, [record_field_decls.rec_fields]))};
+        | {record_decl} dash record lparen [type]:atom comma lbrace record_field_decls? rbrace rparen dot {-> New expr.record_attr(type, [record_field_decls.rec_fields])};
         // Define attributes are removed by the preprocessor
     header_attr_term {-> expr}
         = {literal} literal {-> literal.expr}
@@ -138,7 +138,7 @@ Productions
         | {parens} lparen header_attr_term rparen {-> header_attr_term.expr }
         | {tuple} lbrace [elts]:header_attr_term_list? rbrace {-> New expr.tuple([elts.expr])}
         | {list} lbrack [elts]:header_attr_term_list [tail]:header_attr_term_list_tail? rbrack {-> New expr.list([elts.expr], tail.expr)}
-        | {nil} nil {-> New expr.nil()};
+        | {nil} nil {-> New expr.list([], Null)};
     header_attr_term_list {-> expr*}
         = {one} header_attr_term {-> [header_attr_term.expr]}
         | {many} header_attr_term_list comma header_attr_term {-> [header_attr_term_list.expr, header_attr_term.expr]};
@@ -159,143 +159,141 @@ Productions
     // Program body
     // -------------------------------------------------------
     prog_forms {-> expr*}
-        = atom {-> []};
-//      = {first} fun_decl
-//      | {fun} prog_forms fun_decl
-//      | {attribute} prog_forms anywhere_attrs;
-//  
-//  // Functions
-//  fun_decl
-//      = function_clauses dot;
-//  function_clauses
-//      = {one} [fun]:atom fun_clause
-//      | {many} function_clauses semi [fun]:atom fun_clause;
-//  fun_clause
-//      = lparen patterns? rparen clause_guard? arrow exprs;
-//      
-//  // -------------------------------------------------------
-//  // Patterns
-//  // -------------------------------------------------------
-//  patterns
-//      = {one} pattern
-//      | {many} patterns comma pattern;
-//  pattern
-//      = match_pattern;
-//  match_pattern
-//      = list_conc_pattern eq match_pattern
-//      | {simple} list_conc_pattern;
-//  list_conc_pattern
-//      = [left]:primary_pattern [op]:list_conc_op [right]:list_conc_pattern
-//      | {simple_numerical} addition_shift_pattern
-//      | {simple} primary_pattern;
-//  addition_shift_pattern
-//      = {addition} [left]:addition_shift_pattern [op]:addition_op [right]:times_pattern
-//      | {shift} [left]:addition_shift_pattern [op]:shift_op [right]:times_pattern
-//      | {simple} times_pattern;
-//  times_pattern
-//      = [left]:times_pattern [op]:mult_op [right]:preop_pattern
-//      | {simple} preop_pattern;
-//  preop_pattern
-//      = [op]:pre_op [number]:number
-//      | {simple} number;
-//  primary_pattern
-//      = {literal} alpha
-//      | {var} var
-//      | {universal} underscore
-//      | {tuple} lbrace patterns? rbrace
-//      | {record} pound [type]:atom lbrace record_field_patterns? rbrace
-//      | {list} lbrack patterns list_pattern_tail? rbrack
-//      | {nil} nil
-//      | {parens} lparen pattern rparen;
-//  record_field_patterns
-//      = {one} [name]:atom eq pattern
-//      | {many} record_field_patterns comma [name]:atom eq pattern;
-//  list_pattern_tail
-//      = bar pattern;
-//
-//  // -------------------------------------------------------
-//  // Guards
-//  // -------------------------------------------------------
-//  clause_guard
-//      = when guard_exprs;
-//  guard_exprs
-//      = {one} guard_expr
-//      | {many} guard_exprs comma guard_expr;
-//  guard_expr
-//      = guard_compare_expr;
-//  guard_compare_expr
-//      = {relational} [left]:guard_addition_shift_expr [op]:relational_op [right]:guard_addition_shift_expr
-//      | {equality} [left]:guard_addition_shift_expr [op]:equality_op [right]:guard_addition_shift_expr
-//      | {simple} guard_addition_shift_expr;
-//  guard_addition_shift_expr
-//      = {addition} [left]:guard_addition_shift_expr [op]:addition_op [right]:guard_times_expr
-//      | {shift} [left]:guard_addition_shift_expr [op]:shift_op [right]:guard_times_expr
-//      | {simple} guard_times_expr;
-//  guard_times_expr
-//      = [left]:guard_times_expr [op]:mult_op [right]:guard_preop_expr
-//      | {simple} guard_preop_expr;
-//  guard_preop_expr
-//      = [op]:pre_op [expr]:guard_apply_expr
-//      | {simple} guard_apply_expr;
-//  guard_apply_expr
-//      = {fun} [fun]:atom lparen [args]:guard_exprs? rparen
-//      | {record} guard_record_expr
-//      | {simple} guard_primary_expr;
-//  guard_record_expr
-//      = guard_primary_expr? pound [record]:atom dot [field]:atom;
-//  guard_primary_expr
-//      = {literal} literal
-//      | {var} var
-//      | {nil} nil
-//      | {list} lbrack guard_exprs guard_list_skeleton_tail? rbrack
-//      | {record} lbrace guard_exprs? rbrace
-//      | {parens} lparen guard_expr rparen;
-//  guard_list_skeleton_tail
-//      = bar guard_expr;
-//
-//  // -------------------------------------------------------
-//  // Expressions
-//  // -------------------------------------------------------
-//  exprs
-//      = {one} expr
-//      | {many} exprs comma expr;
+        = {first_fun} fun_decl {-> [fun_decl.expr]}
+        | {fun} prog_forms fun_decl {-> [prog_forms.expr, fun_decl.expr]}
+        | {attribute} prog_forms anywhere_attrs {-> [prog_forms.expr, anywhere_attrs.expr]};
+    
+    // Functions
+    fun_decl {-> expr}
+        = function_clauses dot {-> New expr.fun([function_clauses.fun_clause])};
+    function_clauses {-> fun_clause*}
+        = {one} [name]:atom lparen patterns? rparen clause_guard? arrow exprs {-> [New fun_clause(name, [patterns.expr], [clause_guard.expr], [exprs.expr])]}
+        | {many} function_clauses semi [name]:atom lparen patterns? rparen clause_guard? arrow exprs {-> [function_clauses.fun_clause, New fun_clause(name, [patterns.expr], [clause_guard.expr], [exprs.expr])]};
+        
+    // -------------------------------------------------------
+    // Patterns
+    // -------------------------------------------------------
+    patterns {-> expr*}
+        = {one} pattern {-> [pattern.expr]}
+        | {many} patterns comma pattern {-> [patterns.expr, pattern.expr]};
+    pattern {-> expr}
+        = match_pattern {-> match_pattern.expr};
+    match_pattern {-> expr}
+        = list_conc_pattern eq match_pattern {-> New expr.match(list_conc_pattern.expr, match_pattern.expr)}
+        | {simple} list_conc_pattern {-> list_conc_pattern.expr};
+    list_conc_pattern {-> expr}
+        = [left]:primary_pattern [op]:list_conc_op [right]:list_conc_pattern {-> New expr.listop(left.expr, op.listop, right.expr)}
+        | {simple_numerical} addition_shift_pattern {-> addition_shift_pattern.expr}
+        | {simple} primary_pattern {-> primary_pattern.expr};
+    addition_shift_pattern {-> expr}
+        = {addition} [left]:addition_shift_pattern [op]:addition_op [right]:times_pattern {-> New expr.arithop(left.expr, op.arithop, right.expr)}
+        | {shift} [left]:addition_shift_pattern [op]:shift_op [right]:times_pattern {-> New expr.arithop(left.expr, op.arithop, right.expr)}
+        | {simple} times_pattern {-> times_pattern.expr};
+    times_pattern {-> expr}
+        = [left]:times_pattern [op]:mult_op [right]:preop_pattern {-> New expr.arithop(left.expr, op.arithop, right.expr)}
+        | {simple} preop_pattern {-> preop_pattern.expr};
+    preop_pattern {-> expr}
+        = [op]:pre_op [number]:number {-> New expr.preop(op.preop, number.expr)}
+        | {simple} number {-> number.expr};
+    primary_pattern {-> expr}
+        = {literal} alpha {-> alpha.expr}
+        | {var} var {-> New expr.var(var)}
+        | {universal} underscore {-> New expr.universal()}
+        | {tuple} lbrace patterns? rbrace {-> New expr.tuple([patterns.expr])}
+        | {record} pound [type]:atom lbrace record_field_patterns? rbrace {-> New expr.rec_match(type, [record_field_patterns.rec_fields])}
+        | {list} lbrack patterns list_pattern_tail? rbrack {-> New expr.list([patterns.expr], list_pattern_tail.expr)}
+        | {nil} nil {-> New expr.list([], Null)}
+        | {parens} lparen pattern rparen {-> pattern.expr};
+    record_field_patterns {-> rec_fields*}
+        = {one} [name]:atom eq pattern {-> [New rec_fields(name, pattern.expr)]}
+        | {many} record_field_patterns comma [name]:atom eq pattern {-> [record_field_patterns.rec_fields, New rec_fields(name, pattern.expr)]};
+    list_pattern_tail {-> expr}
+        = bar pattern {-> pattern.expr};
+  
+    // -------------------------------------------------------
+    // Guards
+    // -------------------------------------------------------
+    clause_guard {-> expr*}
+        = when guard_exprs {-> [guard_exprs.expr]};
+    guard_exprs {-> expr*}
+        = {one} guard_expr {-> [guard_expr.expr]}
+        | {many} guard_exprs comma guard_expr {-> [guard_exprs.expr, guard_expr.expr]};
+    guard_expr {-> expr}
+        = guard_primary_expr {-> guard_primary_expr.expr};
+//         = guard_compare_expr;
+//     guard_compare_expr {-> expr}
+//         = {relational} [left]:guard_addition_shift_expr [op]:relational_op [right]:guard_addition_shift_expr
+//         | {equality} [left]:guard_addition_shift_expr [op]:equality_op [right]:guard_addition_shift_expr
+//         | {simple} guard_addition_shift_expr;
+//     guard_addition_shift_expr {-> expr}
+//         = {addition} [left]:guard_addition_shift_expr [op]:addition_op [right]:guard_times_expr
+//         | {shift} [left]:guard_addition_shift_expr [op]:shift_op [right]:guard_times_expr
+//         | {simple} guard_times_expr;
+//     guard_times_expr {-> expr}
+//         = [left]:guard_times_expr [op]:mult_op [right]:guard_preop_expr
+//         | {simple} guard_preop_expr;
+//     guard_preop_expr {-> expr}
+//         = [op]:pre_op [expr]:guard_apply_expr
+//         | {simple} guard_apply_expr;
+//     guard_apply_expr {-> expr}
+//         = {fun} [fun]:atom lparen [args]:guard_exprs? rparen
+//         | {record} guard_record_expr
+//         | {simple} guard_primary_expr;
+//     guard_record_expr {-> expr}
+//         = guard_primary_expr? pound [record]:atom dot [field]:atom;
+    guard_primary_expr {-> expr}
+        = {literal} literal {-> literal.expr};
+//         | {var} var
+//         | {nil} nil
+//         | {list} lbrack guard_exprs guard_list_skeleton_tail? rbrack
+//         | {record} lbrace guard_exprs? rbrace
+//         | {parens} lparen guard_expr rparen;
+//     guard_list_skeleton_tail
+//         = bar guard_expr;
+//   
+//     // -------------------------------------------------------
+//     // Expressions
+//     // -------------------------------------------------------
+    exprs {-> expr*}
+        = {one} expr {-> [expr.expr]}
+        | {many} exprs comma expr {-> [exprs.expr, expr.expr]};
     expr {-> expr}
-        = nil {-> New expr.nil()};
-//      = match_expr;
-//  match_expr
+        = match_expr {-> match_expr.expr};
+    match_expr {-> expr}
+        = primary_expr {-> primary_expr.expr};
 //      = send_expr eq match_expr
 //      | {simple} send_expr;
-//  send_expr
+//  send_expr {-> expr}
 //      = [left]:compare_expr bang [right]:send_expr
 //      | {simple} compare_expr;
-//  compare_expr
+//  compare_expr {-> expr}
 //      = {relational} [left]:list_conc_expr [op]:relational_op [right]:list_conc_expr
 //      | {equality} [left]:list_conc_expr [op]:equality_op [right]:list_conc_expr
 //      | {simple} list_conc_expr;
-//  list_conc_expr
+//  list_conc_expr {-> expr}
 //      = [left]:addition_shift_expr [op]:list_conc_op [right]:list_conc_expr
 //      | {simple} addition_shift_expr;
-//  addition_shift_expr
+//  addition_shift_expr {-> expr}
 //      = {addition} [left]:addition_shift_expr [op]:addition_op [right]:times_expr
 //      | {shift} [left]:addition_shift_expr [op]:shift_op [right]:times_expr
 //      | {simple} times_expr;
-//  times_expr
+//  times_expr {-> expr}
 //      = [left]:times_expr [op]:mult_op [right]:preop_expr
 //      | {simple} preop_expr;
-//  preop_expr
+//  preop_expr {-> expr}
 //      = [op]:pre_op [expr]:apply_expr
 //      | {simple} record_expr;
-//  record_expr
+//  record_expr {-> expr}
 //      = {field} record_expr? pound [type]:atom dot [name]:atom
 //      | {update} record_expr? pound [type]:atom lbrace record_field_updates? rbrace
 //      | {simple} apply_expr; 
-//  apply_expr
+//  apply_expr {-> expr}
 //      = {local} [fun]:primary_expr lparen [args]:exprs? rparen
 //      | {module} [module]:primary_expr colon [fun]:primary_expr lparen [args]:exprs? rparen
 //      | {simple} primary_expr;
-//  primary_expr
-//      = {var} var
-//      | {literal} literal
+    primary_expr {-> expr}
+        = {var} var {-> New expr.var(var)}
+        | {literal} literal {-> literal.expr};
 //      | {tuple} lbrace exprs? rbrace
 //      | {list} list
 //      | {comprehension} lbrack expr barbar comprehension_exprs rbrack
@@ -309,7 +307,7 @@ Productions
 //  fun_expr
 //      = {local} [fun_keyword]:fun [fun]:atom slash [arity]:integer
 //      | {module} [fun_keyword]:fun [module]:atom colon [fun]:atom slash [arity]:integer
-//      | {anon} fun fun_clauses end;
+//      | {anon} [fun_keyword]:fun fun_clauses end;
 //  receive_expr
 //      = receive case_clauses end
 //      | {after} receive case_clauses? after expr arrow exprs end;
@@ -335,11 +333,11 @@ Productions
         | {record} record {-> New expr.alt_atom(New alt_atom.record())};
 //  relational_op = {lt} lt | {gt} gt | {le} le | {ge} ge;
 //  equality_op = {equiv} equiv | {nequiv} nequiv | {eq} eqeq | {neq} neq;
-//  list_conc_op = {conc} plusplus | {del} minusminus;
-//  addition_op = {plus} plus | {minus} dash | {bor} bor | {bxor} bxor;
-//  shift_op = {bsl} bsl | {bsr} bsr;
-//  mult_op = {times} star | {divide} slash | {div} div | {rem} rem | {band} band;
-//  pre_op = {pos} plus | {neg} dash | {bnot} bnot | {not} not;
+    list_conc_op {-> listop} = {conc} plusplus {-> New listop.conc()} | {del} minusminus {-> New listop.del()};
+    addition_op {-> arithop} = {plus} plus {-> New arithop.plus()} | {minus} dash {-> New arithop.minus()} | {bor} bor {-> New arithop.bor()} | {bxor} bxor {-> New arithop.bxor()};
+    shift_op {-> arithop} = {bsl} bsl  {-> New arithop.bsl()} | {bsr} bsr {-> New arithop.bsr()};
+    mult_op {-> arithop} = {times} star{-> New arithop.times()} | {divide} slash {-> New arithop.divide()} | {div} div {-> New arithop.div()} | {rem} rem  {-> New arithop.rem()}| {band} band {-> New arithop.band()};
+    pre_op {-> preop} = {pos} plus {-> New preop.pos()} | {neg} dash {-> New preop.neg()} | {bnot} bnot {-> New preop.bnot()};
 //  record_field_updates
 //      = {one} [name]:atom eq expr
 //      | {many} record_field_updates comma [name]:atom eq expr;
@@ -367,14 +365,21 @@ Productions
 //      = {one} pattern clause_guard? arrow exprs
 //      | {many} case_clauses semi pattern clause_guard? arrow exprs;
 //  fun_clauses
-//      = {one} fun_clause
-//      | {many} fun_clauses semi fun_clause;
+//      = {one} lparen patterns? rparen clause_guard? arrow exprs
+//      | {many} fun_clauses semi lparen patterns? rparen clause_guard? arrow exprs;
     
 Abstract Syntax Tree
     expr
         = {module} expr+
-        | {attr} attr
-        | {fun} [fun]:atom? fun_clauses*
+        | {fun} fun_clause*
+        // attributes
+        | {file_attr} string integer
+        | {module_attr} [name]:atom
+        | {export_attr} [funs]:fun_arity*
+        | {import_attr} [module]:atom [funs]:fun_arity*
+        | {compile_attr} [term]:expr
+        | {record_attr} [type]:atom [fields]:rec_fields*
+        | {custom_attr} [term]:expr
         // expressions
         | {match} [left]:expr [right]:expr
         | {send} [left]:expr [right]:expr
@@ -382,6 +387,7 @@ Abstract Syntax Tree
         | {apply} [module]:expr? [fun]:expr [args]:expr*
         // record
         | {rec_read} [rec]:expr? [type]:atom [field]:atom
+        | {rec_match} [type]:atom [fields]:rec_fields*
         | {rec_update} [rec]:expr? [fields]:rec_update_fields*
         // arithmetic / bool ops
         | {boolop} [left]:expr [op]:boolop [right]:expr
@@ -392,14 +398,14 @@ Abstract Syntax Tree
         // primary
         | {tuple} [elts]:expr*
         | {list} [elts]:expr* [tail]:expr?
-        | {comprehension} expr generator_filter*
+        | {comprehension} expr [generator_or_filter]:expr*
+        | {generator} [pattern]:expr expr   // ASTFix checks that pattern is a legal pattern expression since grammar doesn't restrict it
         | {block} expr*
         | {if} [clauses]:if_clause*
         | {case} [clauses]:case_clause*
         | {fun_ref} [module]:atom? [fun]:atom? [arity]:integer?
         | {paren} expr
         // literals
-        | {nil}
         | {universal}
         | {integer} integer
         | {decimal} decimal
@@ -409,24 +415,13 @@ Abstract Syntax Tree
         | {char} char
         | {string} string
         | {strings} string+;
-    attr
-        = {file} string integer
-        | {module} [name]:atom
-        | {export} [funs]:fun_arity*
-        | {import} [module]:atom [funs]:fun_arity*
-        | {compile} [term]:expr
-        | {record} [type]:atom [fields]:rec_fields*
-        | {other} [term]:expr;
     fun_arity = [name]:atom [arity]:integer;
-    fun_clauses
-        = [args]:expr* [guards]:expr* [body]:expr*;
+    fun_clause
+        = [name]:atom? [args]:expr* [guards]:expr* [body]:expr*;
     if_clause
         = [guard]:expr [body]:expr*;
     case_clause
         = [pattern]:expr [guard]:expr? [body]:expr*;
-    generator_filter
-        = {generator} [pattern]:expr expr
-        | {filter} expr;
     rec_fields = [name]:atom [value]:expr?;
     rec_update_fields = [name]:atom expr;
     boolop = {lt} | {gt} | {le} | {ge} | {equiv} | {nequiv} | {eq} | {neq};
