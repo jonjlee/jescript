@@ -48,38 +48,11 @@ public class Util {
 				for (int i = 0; i < indent; i++) {
 					s.append("|  ");
 				}
-				s.append(n.getClass().toString().replaceFirst("class jescript.node.A?", "")).append(getText(n));
-				ast.append(s).append("\n");
-			}
-			String getText(Node n) {
-				AnalysisAdapter nodeText = new AnalysisAdapter() {
-					public void defaultCase(Node n) {
-						if (n instanceof AIntegerExpr || n instanceof ADecimalExpr || n instanceof AAtomExpr || n instanceof AAltAtomExpr || n instanceof AVarExpr || n instanceof ACharExpr || n instanceof AStringExpr || n instanceof AStringsExpr 
-								|| n instanceof AFileAttrExpr || n instanceof AModuleAttrExpr || n instanceof ACompileAttrExpr || n instanceof ACustomAttrExpr) {
-							setOut(n, n);
-						}
-					}
-					@Override public void caseAImportAttrExpr(AImportAttrExpr node) { setOut(node, node.getModule().getText()); }
-					public void caseARecordAttrExpr(ARecordAttrExpr node) { setOut(node, node.getType()); }
-					public void caseARecFields(ARecFields node) {
-						String ret = node.getName().getText();
-						if (node.getValue() != null) {
-							node.getValue().apply(this);
-							if (getOut(node.getValue()) != null) { ret += " = " + getOut(node.getValue()); };
-						}
-						setOut(node, ret);
-					}
-					@Override public void caseAFunClause(AFunClause node) { setOut(node, node.getName()); }
-					@Override public void caseAListExpr(AListExpr node) { if (node.getElts().size() == 0) { setOut(node, "[]"); }}
-					@Override public void caseAFunArity(AFunArity node) { setOut(node, node.getName().getText() + "/" + node.getArity().getText()); }
-				};
-				String s = "";
-				
-				n.apply(nodeText);
-				if (nodeText.getOut(n) != null) {
-					s = "(" + nodeText.getOut(n).toString().trim() + ")";
+				s.append(n.getClass().toString().replaceFirst("class jescript.node.A?", ""));
+				if (n instanceof Token) {
+					s.append("(").append(((Token) n).getText().trim()).append(")");
 				}
-				return s;
+				ast.append(s).append("\n");
 			}
 			@Override public void defaultIn(Node node) {
 				append(node);
@@ -87,6 +60,9 @@ public class Util {
 			}
 			@Override public void defaultOut(Node node) {
 				indent--;
+			}
+			@Override public void defaultCase(Node node) {
+				append(node);
 			}
 		});
 		return ast.toString();
