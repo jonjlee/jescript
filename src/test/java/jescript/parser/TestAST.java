@@ -1,11 +1,9 @@
 package jescript.parser;
 
 import static jescript.parser.Util.*;
-import static org.testng.Assert.*;
 import java.io.PushbackReader;
 import java.io.StringReader;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import jescript.lexer.Lexer;
@@ -17,7 +15,6 @@ import org.testng.log4testng.Logger;
 public class TestAST {
 
 	private static Logger LOG = Logger.getLogger(TestAST.class);
-	private static List<PExpr> none = Collections.unmodifiableList(new LinkedList<PExpr>());
 
 	public void emptyModule() {
 		testInput("-module(m).", new AModuleExpr(Arrays.asList((PExpr) new AModuleAttrExpr(atomTok("m")))));
@@ -229,53 +226,6 @@ public class TestAST {
 	public void invalidExpr() {
 		testInvalidExpr("X > Y > Z");
 	}
-
-	// AST construction convenience methods
-	private TAtom atomTok(String atom) {
-		return new TAtom(atom);
-	}
-	private TInteger intTok(int i) {
-		return new TInteger(i + "");
-	}
-	private TString strTok(String s) {
-		return new TString('"' + s + '"');
-	}
-	private PExpr atom(String atom) {
-		return new AAtomExpr(atomTok(atom));
-	}
-	private List<PExpr> atoms(String... atoms) {
-		List<PExpr> exprs = new LinkedList<PExpr>();
-		for (String atom : atoms) {
-			exprs.add(atom(atom));
-		}
-		return exprs;
-	}
-	private PExpr integer(int num) {
-		return new AIntegerExpr(intTok(num));
-	}
-	private List<PExpr> integers(int... nums) {
-		List<PExpr> exprs = new LinkedList<PExpr>();
-		for (int num : nums) {
-			exprs.add(integer(num));
-		}
-		return exprs;
-	}
-	private PExpr decimal(double num) {
-		return new ADecimalExpr(new TDecimal(num + ""));
-	}
-	private PExpr string(String s) {
-		return new AStringExpr(strTok(s));
-	}
-	private PExpr var(String v) {
-		return new AVarExpr(new TVar(v));
-	}
-	private List<PExpr> vars(String... vars) {
-		List<PExpr> exprs = new LinkedList<PExpr>();
-		for (String v: vars) {
-			exprs.add(var(v));
-		}
-		return exprs;
-	}
 	
 	// Tester convenience methods
 	private void testInput(String input, Node n) {
@@ -320,12 +270,6 @@ public class TestAST {
 	private void testInvalidModule(String input) { testInvalidInput("-module(m).\n" + input); }
 	private void testInvalidExpr(String input) { testInvalidInput("-module(m).\nf() -> " + input + "."); }
 
-	// Asserts
-	private void assertASTEquals(Node start, Node expected) {
-		Node root = ((Start) start).getPExpr();
-		assertEquals(nodeToString(root), nodeToString(expected));
-	}
-	
 	// Parse input into AST
 	private Node parse(String input) {
 		try {
