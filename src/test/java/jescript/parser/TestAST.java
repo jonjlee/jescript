@@ -69,7 +69,7 @@ public class TestAST {
 								atoms("ok")),
 						(PFunClause) new AFunClause(
 								atomTok("main"),
-								Arrays.asList((PExpr) new AUniversalExpr()),
+								Arrays.asList((PExpr) new AUniversalPatternExpr()),
 								atoms("true"),
 								atoms("err"))
 						)));
@@ -119,6 +119,116 @@ public class TestAST {
 		testInvalidModule("f(X) when X=1 -> ok.");
 		testInvalidModule("f(X) when m:f(1) -> ok.");
 	}
+	
+	public void exprs() {
+		testModule("f() -> a, a.",
+				new AFunExpr(Arrays.asList((PFunClause) new AFunClause(
+						atomTok("f"),
+						none,
+						none,
+						atoms("a", "a")))));
+		testExpr("a", atom("a"));
+		testExpr("V", var("V"));
+		testExpr("{1,2}", new ATupleExpr(integers(1,2)));
+		testExpr("[1,2|3]", new AListExpr(integers(1,2), integer(3)));
+		testExpr("[X || X <- [1,2,3], X>=2]", 
+				new AComprehensionExpr(
+						var("X"), 
+						Arrays.asList(
+								(PExpr) new AGeneratorExpr(var("X"), new AListExpr(integers(1,2,3), null)),
+								(PExpr) new ABoolopExpr(var("X"), new AGeBoolop(), integer(2)))));
+		testExpr("begin x, 1 end", new ABlockExpr(Arrays.asList(atom("x"), integer(1))));
+		testExpr("if X -> x; true -> err end", 
+			new AIfExpr(Arrays.asList(
+					(PIfClause) new AIfClause(vars("X"), atoms("x")),
+					(PIfClause) new AIfClause(atoms("true"), atoms("err"))
+					)));
+		testExpr("case X of Y when Y =/= 1 -> X; _ -> err end",
+				new ACaseExpr(var("X"), Arrays.asList(
+						(PCaseClause) new ACaseClause(
+								var("Y"), 
+								Arrays.asList((PExpr) new ABoolopExpr(var("Y"), new ANequivBoolop(), integer(1))),
+								vars("X")),
+						(PCaseClause) new ACaseClause(
+								new AUniversalPatternExpr(),
+								none,
+								atoms("err")))));
+		testExpr("receive {X} when X == 2 -> 2; {X} -> 3 after 1000 -> err end",
+				new AReceiveExpr(Arrays.asList(
+						(PCaseClause) new ACaseClause(
+								new ATupleExpr(vars("X")),
+								Arrays.asList((PExpr) new ABoolopExpr(var("X"), new AEqBoolop(), integer(2))),
+								integers(2)),
+						(PCaseClause) new ACaseClause(
+								new ATupleExpr(vars("X")),
+								none,
+								integers(3))),
+						integer(1000),
+						atoms("err")));
+		testExpr("fun m:f/1", new AFunRefExpr(atomTok("m"), atomTok("f"), intTok(1)));
+		testExpr("fun (X) when X == 2 -> 2; (X) -> err end",
+				new AFunExpr(Arrays.asList(
+						(PFunClause) new AFunClause(
+								null,
+								vars("X"), 
+								Arrays.asList((PExpr) new ABoolopExpr(var("X"), new AEqBoolop(), integer(2))),
+								integers(2)),
+						(PFunClause) new AFunClause(null, vars("X"), none, atoms("err")))));
+		testExpr("(x)", atom("x"));
+		
+		testExpr("X=1", new AMatchExpr(var("X"), integer(1)));
+		testExpr("dest ! a", new ASendExpr(atom("dest"), atom("a")));
+		testExpr("X >= 1.0", new ABoolopExpr(var("X"), new AGeBoolop(), decimal(1.0)));
+		testExpr("X =:= Y", new ABoolopExpr(var("X"), new AEquivBoolop(), var("Y")));
+		testExpr("[65] ++ \"A\"", new AListopExpr(new AListExpr(integers(65), null),new AConcListop(), string("A")));
+		testExpr("X+1", new AArithopExpr(var("X"), new APlusArithop(), integer(1)));
+		testExpr("X*2", new AArithopExpr(var("X"), new ATimesArithop(), integer(2)));
+		testExpr("-X", new APreopExpr(new ANegPreop(), var("X")));
+		testExpr("X#rec.f", new ARecReadExpr(var("X"), atomTok("rec"), atomTok("f")));
+		testExpr("X#rec{f=1}",
+				new ARecUpdateExpr(
+						var("X"),
+						atomTok("rec"), 
+						Arrays.asList((PRecUpdateFields) new ARecUpdateFields(atomTok("f"), integer(1)))));
+		testExpr("f(x)", new AApplyExpr(null, atom("f"), atoms("x")));
+		testExpr("m:f(x)", new AApplyExpr(atom("m"), atom("f"), atoms("x")));
+	}
+	
+	public void exprPrecedence() {
+		testExpr("dest ! (X=1)", new ASendExpr(atom("dest"), new AMatchExpr(var("X"), integer(1))));
+		testExpr("X=<Y = 1", new AMatchExpr(new ABoolopExpr(var("X"), new ALeBoolop(), var("Y")), integer(1)));
+		testExpr("X = [1,2]--[1]", 
+				new AMatchExpr(
+						var("X"), 
+						new AListopExpr(
+								new AListExpr(integers(1,2), null), 
+								new ADelListop(), 
+								new AListExpr(integers(1), null))));
+		testExpr("1 bsl 2 * -3 / (4 + +5)",
+				new AArithopExpr(
+						integer(1), 
+						new ABslArithop(), 
+						new AArithopExpr(
+								new AArithopExpr(
+										integer(2),
+										new ATimesArithop(),
+										new APreopExpr(new ANegPreop(), integer(3))),
+								new ADivideArithop(),
+								new AArithopExpr(
+										integer(4),
+										new APlusArithop(),
+										new APreopExpr(new APosPreop(), integer(5))))));
+	}
+	
+	public void exprAssociativity() {
+		testExpr("X=Y=1", new AMatchExpr(var("X"), new AMatchExpr(var("Y"), integer(1))));
+		testExpr("X+Y+1", new AArithopExpr(new AArithopExpr(var("X"), new APlusArithop(), var("Y")), new APlusArithop(), integer(1)));
+		testExpr("X div Y div 1", new AArithopExpr(new AArithopExpr(var("X"), new ADivArithop(), var("Y")), new ADivArithop(), integer(1)));
+	}
+	
+	public void invalidExpr() {
+		testInvalidExpr("X > Y > Z");
+	}
 
 	// AST construction convenience methods
 	private TAtom atomTok(String atom) {
@@ -149,6 +259,9 @@ public class TestAST {
 			exprs.add(integer(num));
 		}
 		return exprs;
+	}
+	private PExpr decimal(double num) {
+		return new ADecimalExpr(new TDecimal(num + ""));
 	}
 	private PExpr string(String s) {
 		return new AStringExpr(strTok(s));
@@ -197,9 +310,15 @@ public class TestAST {
 						Arrays.asList(ast),
 						atoms("ok")))));
 	}
+	private void testExpr(String input, PExpr ast) {
+		testModule("f() -> " + input + ".",
+				new AFunExpr(Arrays.asList((PFunClause) 
+						new AFunClause(atomTok("f"), none, none, Arrays.asList(ast)))));
+	}
 	
 	private void testInvalidInput(String input) { assertInvalid(parse(input)); }
 	private void testInvalidModule(String input) { testInvalidInput("-module(m).\n" + input); }
+	private void testInvalidExpr(String input) { testInvalidInput("-module(m).\nf() -> " + input + "."); }
 
 	// Asserts
 	private void assertASTEquals(Node start, Node expected) {

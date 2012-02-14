@@ -28,7 +28,7 @@ public class TestLexer {
 	public void operators() {
 		testTokens("+ - * /", TPlus.class, TDash.class, TStar.class, TSlash.class);
 		testTokens("= == /=", TEq.class, TEqeq.class, TNeq.class);
-		testTokens("< > <= >=", TLt.class, TGt.class, TLe.class, TGe.class);
+		testTokens("< > =< >=", TLt.class, TGt.class, TLe.class, TGe.class);
 		testTokens("++ -- ! <-", TPlusplus.class, TMinusminus.class, TBang.class, TLarrow.class);
 	}
 

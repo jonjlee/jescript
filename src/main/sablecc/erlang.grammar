@@ -53,7 +53,7 @@ Tokens
     rem = 'rem';       or = 'or';     xor = 'xor';     and = 'and';       andalso = 'andalso';
     orelse = 'orelse'; bor = 'bor';   bxor = 'bxor';   bsl = 'bsl';       bsr = 'bsr'; 
     band = 'band';     eq = '=';      eqeq = '==';     neq = '/=';        lt = '<';
-    gt = '>';          le = '<=';     ge = '>=';       equiv = '=:=';     nequiv = '=/=';
+    gt = '>';          le = '=<';     ge = '>=';       equiv = '=:=';     nequiv = '=/=';
     not = 'not';       bnot = 'bnot'; plusplus = '++'; minusminus = '--'; bang = '!';
     larrow = '<-';
 
@@ -198,7 +198,7 @@ Productions
     primary_pattern {-> expr}
         = {literal} alpha {-> alpha.expr}
         | {var} var {-> New expr.var(var)}
-        | {universal} underscore {-> New expr.universal()}
+        | {universal} underscore {-> New expr.universal_pattern()}
         | {tuple} lbrace patterns? rbrace {-> New expr.tuple([patterns.expr])}
         | {record} pound [type]:atom lbrace record_field_patterns? rbrace {-> New expr.rec_match(type, [record_field_patterns.rec_fields])}
         | {list} lbrack patterns list_pattern_tail? rbrack {-> New expr.list([patterns.expr], list_pattern_tail.expr)}
@@ -260,59 +260,58 @@ Productions
     expr {-> expr}
         = match_expr {-> match_expr.expr};
     match_expr {-> expr}
-        = primary_expr {-> primary_expr.expr};
-//      = send_expr eq match_expr
-//      | {simple} send_expr;
-//  send_expr {-> expr}
-//      = [left]:compare_expr bang [right]:send_expr
-//      | {simple} compare_expr;
-//  compare_expr {-> expr}
-//      = {relational} [left]:list_conc_expr [op]:relational_op [right]:list_conc_expr
-//      | {equality} [left]:list_conc_expr [op]:equality_op [right]:list_conc_expr
-//      | {simple} list_conc_expr;
-//  list_conc_expr {-> expr}
-//      = [left]:addition_shift_expr [op]:list_conc_op [right]:list_conc_expr
-//      | {simple} addition_shift_expr;
-//  addition_shift_expr {-> expr}
-//      = {addition} [left]:addition_shift_expr [op]:addition_op [right]:times_expr
-//      | {shift} [left]:addition_shift_expr [op]:shift_op [right]:times_expr
-//      | {simple} times_expr;
-//  times_expr {-> expr}
-//      = [left]:times_expr [op]:mult_op [right]:preop_expr
-//      | {simple} preop_expr;
-//  preop_expr {-> expr}
-//      = [op]:pre_op [expr]:apply_expr
-//      | {simple} record_expr;
-//  record_expr {-> expr}
-//      = {field} record_expr? pound [type]:atom dot [name]:atom
-//      | {update} record_expr? pound [type]:atom lbrace record_field_updates? rbrace
-//      | {simple} apply_expr; 
-//  apply_expr {-> expr}
-//      = {local} [fun]:primary_expr lparen [args]:exprs? rparen
-//      | {module} [module]:primary_expr colon [fun]:primary_expr lparen [args]:exprs? rparen
-//      | {simple} primary_expr;
+        = [left]:send_expr eq [right]:match_expr {-> New expr.match(left.expr, right.expr)}
+        | {simple} [simple]:send_expr {-> simple.expr};
+    send_expr {-> expr}
+        = [left]:compare_expr bang [right]:send_expr {-> New expr.send(left.expr, right.expr)}
+        | {simple} [simple]:compare_expr {-> simple.expr};
+    compare_expr {-> expr}
+        = {relational} [left]:list_conc_expr [op]:relational_op [right]:list_conc_expr {-> New expr.boolop(left.expr, op.boolop, right.expr)}
+        | {equality} [left]:list_conc_expr [op]:equality_op [right]:list_conc_expr {-> New expr.boolop(left.expr, op.boolop, right.expr)}
+        | {simple} [simple]:list_conc_expr {-> simple.expr};
+    list_conc_expr {-> expr}
+        = [left]:addition_shift_expr [op]:list_conc_op [right]:list_conc_expr {-> New expr.listop(left.expr, op.listop, right.expr)}
+        | {simple} [simple]:addition_shift_expr {-> simple.expr};
+    addition_shift_expr {-> expr}
+        = {addition} [left]:addition_shift_expr [op]:addition_op [right]:times_expr {-> New expr.arithop(left.expr, op.arithop, right.expr)}
+        | {shift} [left]:addition_shift_expr [op]:shift_op [right]:times_expr {-> New expr.arithop(left.expr, op.arithop, right.expr)}
+        | {simple} [simple]:times_expr {-> simple.expr};
+    times_expr {-> expr}
+        = [left]:times_expr [op]:mult_op [right]:preop_expr {-> New expr.arithop(left.expr, op.arithop, right.expr)}
+        | {simple} [simple]:preop_expr {-> simple.expr};
+    preop_expr {-> expr}
+        = [op]:pre_op [expr]:apply_expr {-> New expr.preop(op.preop, expr.expr)}
+        | {simple} [simple]:record_expr {-> simple.expr};
+    record_expr {-> expr}
+        = {field} record_expr? pound [type]:atom dot [name]:atom {-> New expr.rec_read(record_expr.expr, type, name)}
+        | {update} record_expr? pound [type]:atom lbrace record_field_updates? rbrace {-> New expr.rec_update(record_expr.expr, type, [record_field_updates.rec_update_fields])}
+        | {simple} [simple]:apply_expr {-> simple.expr};
+    apply_expr {-> expr}
+        = {local} [fun]:primary_expr lparen [args]:exprs? rparen {-> New expr.apply(Null, fun.expr, [args.expr])}
+        | {module} [module]:primary_expr colon [fun]:primary_expr lparen [args]:exprs? rparen {-> New expr.apply(module.expr, fun.expr, [args.expr])}
+        | {simple} [simple]:primary_expr {-> simple.expr};
     primary_expr {-> expr}
         = {var} var {-> New expr.var(var)}
-        | {literal} literal {-> literal.expr};
-//      | {tuple} lbrace exprs? rbrace
-//      | {list} list
-//      | {comprehension} lbrack expr barbar comprehension_exprs rbrack
-//      | {block} begin exprs end
-//      | {if} if if_clauses end
-//      | {case} case expr of case_clauses end
-//      | {receive} receive_expr
-//      | {fun} fun_expr
-//      | {paren} lparen expr rparen
-//      | {universal_pattern} underscore;
-//  fun_expr
-//      = {local} [fun_keyword]:fun [fun]:atom slash [arity]:integer
-//      | {module} [fun_keyword]:fun [module]:atom colon [fun]:atom slash [arity]:integer
-//      | {anon} [fun_keyword]:fun fun_clauses end;
-//  receive_expr
-//      = receive case_clauses end
-//      | {after} receive case_clauses? after expr arrow exprs end;
-//  
-//  // Expression helpers
+        | {literal} literal {-> literal.expr}
+        | {tuple} lbrace exprs? rbrace {-> New expr.tuple([exprs.expr])}
+        | {list} list {-> list.expr}
+        | {comprehension} lbrack expr barbar comprehension_exprs rbrack {-> New expr.comprehension(expr.expr, [comprehension_exprs.expr])}
+        | {block} begin exprs end {-> New expr.block([exprs.expr])}
+        | {if} if if_clauses end {-> New expr.if([if_clauses.if_clause])}
+        | {case} case expr of case_clauses end {-> New expr.case(expr.expr, [case_clauses.case_clause])}
+        | {receive} receive_expr {-> receive_expr.expr}
+        | {fun} fun_expr {-> fun_expr.expr}
+        | {paren} lparen expr rparen {-> expr.expr}
+        | {universal_pattern} underscore {-> New expr.universal_pattern()};
+    fun_expr {-> expr}
+        = {local} [fun_keyword]:fun [fun]:atom slash [arity]:integer {-> New expr.fun_ref(Null, fun, arity)}
+        | {module} [fun_keyword]:fun [module]:atom colon [fun]:atom slash [arity]:integer {-> New expr.fun_ref(module, fun, arity)}
+        | {anon} [fun_keyword]:fun fun_clauses end {-> New expr.fun([fun_clauses.fun_clause])};
+    receive_expr {-> expr}
+        = receive case_clauses end {-> New expr.receive([case_clauses.case_clause], Null, [])}
+        | {after} receive case_clauses? after expr arrow exprs end {-> New expr.receive([case_clauses.case_clause], expr.expr, [exprs.expr])};
+    
+    // Expression helpers
     literal {-> expr}
         = {number} [v]:number {-> v.expr}
         | {alpha} [v]:alpha {-> v.expr};
@@ -321,7 +320,7 @@ Productions
         | {decimal} [v]:decimal {-> New expr.decimal(v)};
     alpha {-> expr}
         = {char} [v]:char {-> New expr.char(v)}
-        | {string} [v]:string {-> New expr.string(v)}
+        | {string} [v]:strings {-> v.expr}
         | {atom} [v]:atom {-> New expr.atom(v)}
         | {attribute} [v]:attribute {-> v.expr};
     attribute {-> expr}
@@ -338,35 +337,35 @@ Productions
     shift_op {-> arithop} = {bsl} bsl  {-> New arithop.bsl()} | {bsr} bsr {-> New arithop.bsr()};
     mult_op {-> arithop} = {times} star{-> New arithop.times()} | {divide} slash {-> New arithop.divide()} | {div} div {-> New arithop.div()} | {rem} rem  {-> New arithop.rem()}| {band} band {-> New arithop.band()};
     pre_op {-> preop} = {pos} plus {-> New preop.pos()} | {neg} dash {-> New preop.neg()} | {bnot} bnot {-> New preop.bnot()};
-//  record_field_updates
-//      = {one} [name]:atom eq expr
-//      | {many} record_field_updates comma [name]:atom eq expr;
-//  strings
-//      = {one} string
-//      | {many} strings string;
-//  list
-//      = lbrack list_terms list_tail? rbrack
-//      | {nil} nil;
-//  list_terms
-//      = {one} expr
-//      | {many} list_terms comma expr;
-//  list_tail
-//      = bar expr;
-//  comprehension_exprs
-//      = {one} comprehension_expr
-//      | {many} comprehension_exprs comma comprehension_expr;
-//  comprehension_expr
-//      = {generator} [pattern]:expr larrow expr       // pattern should actually be a pattern, but this causes a reduce/reduce conflict with expr. Parser will resolve this.
-//      | {filter} expr;
-//  if_clauses
-//      = {one} guard_exprs arrow exprs
-//      | {many} if_clauses semi guard_exprs arrow exprs;
-//  case_clauses
-//      = {one} pattern clause_guard? arrow exprs
-//      | {many} case_clauses semi pattern clause_guard? arrow exprs;
-//  fun_clauses
-//      = {one} lparen patterns? rparen clause_guard? arrow exprs
-//      | {many} fun_clauses semi lparen patterns? rparen clause_guard? arrow exprs;
+    record_field_updates {-> rec_update_fields*}
+        = {one} [name]:atom eq expr {-> [New rec_update_fields(name, expr.expr)]}
+        | {many} record_field_updates comma [name]:atom eq expr {-> [record_field_updates.rec_update_fields, New rec_update_fields(name, expr.expr)]};
+    strings {-> expr}
+        = {one} string {-> New expr.string(string)}
+        | {many} strings string {-> New expr.strings(strings.expr, string)};
+    list {-> expr}
+        = lbrack list_terms list_tail? rbrack {-> New expr.list([list_terms.expr], list_tail.expr)}
+        | {nil} nil {-> New expr.list([], Null)};
+    list_terms {-> expr*}
+        = {one} expr {-> [expr.expr]}
+        | {many} list_terms comma expr {-> [list_terms.expr, expr.expr]};
+    list_tail {-> expr}
+        = bar expr {-> expr.expr};
+    comprehension_exprs {-> expr*}
+        = {one} comprehension_expr {-> [comprehension_expr.expr]}
+        | {many} comprehension_exprs comma comprehension_expr {-> [comprehension_exprs.expr, comprehension_expr.expr]};
+    comprehension_expr {-> expr}
+        = {generator} [pattern]:expr larrow expr {-> New expr.generator(pattern.expr, expr.expr)}       // pattern should actually be a pattern, but this causes a reduce/reduce conflict with expr. Parser will resolve this.
+        | {filter} expr {-> expr.expr};
+    if_clauses {-> if_clause*}
+        = {one} guard_exprs arrow exprs {-> [New if_clause([guard_exprs.expr], [exprs.expr])]}
+        | {many} if_clauses semi guard_exprs arrow exprs {-> [if_clauses.if_clause, New if_clause([guard_exprs.expr], [exprs.expr])]};
+    case_clauses {-> case_clause*}
+        = {one} pattern clause_guard? arrow exprs {-> [New case_clause(pattern.expr, [clause_guard.expr], [exprs.expr])]}
+        | {many} case_clauses semi pattern clause_guard? arrow exprs {-> [case_clauses.case_clause, New case_clause(pattern.expr, [clause_guard.expr], [exprs.expr])]};
+    fun_clauses {-> fun_clause*}
+        = {one} lparen patterns? rparen clause_guard? arrow exprs {-> [New fun_clause(Null, [patterns.expr], [clause_guard.expr], [exprs.expr])]}
+        | {many} fun_clauses semi lparen patterns? rparen clause_guard? arrow exprs {-> [fun_clauses.fun_clause, New fun_clause(Null, [patterns.expr], [clause_guard.expr], [exprs.expr])]};
     
 Abstract Syntax Tree
     expr
@@ -383,12 +382,12 @@ Abstract Syntax Tree
         // expressions
         | {match} [left]:expr [right]:expr
         | {send} [left]:expr [right]:expr
-        | {receive} [clauses]:case_clause*
+        | {receive} [clauses]:case_clause* [timeout]:expr? [after]:expr*
         | {apply} [module]:expr? [fun]:expr [args]:expr*
         // record
         | {rec_read} [rec]:expr? [type]:atom [field]:atom
         | {rec_match} [type]:atom [fields]:rec_fields*
-        | {rec_update} [rec]:expr? [fields]:rec_update_fields*
+        | {rec_update} [rec]:expr? [type]:atom [fields]:rec_update_fields*
         // arithmetic / bool ops
         | {boolop} [left]:expr [op]:boolop [right]:expr
         | {arithop} [left]:expr [op]:arithop [right]:expr
@@ -402,26 +401,26 @@ Abstract Syntax Tree
         | {generator} [pattern]:expr expr   // ASTFix checks that pattern is a legal pattern expression since grammar doesn't restrict it
         | {block} expr*
         | {if} [clauses]:if_clause*
-        | {case} [clauses]:case_clause*
+        | {case} expr [clauses]:case_clause*
         | {fun_ref} [module]:atom? [fun]:atom? [arity]:integer?
         | {paren} expr
         // literals
-        | {universal}
+        | {universal_pattern}
         | {integer} integer
         | {decimal} decimal
         | {atom} atom
-        | {alt_atom} alt_atom   // helper -- converted to atom_expr by ASTFix
+        | {alt_atom} alt_atom           // helper -- converted to atom_expr by ASTFix
         | {var} var
         | {char} char
         | {string} string
-        | {strings} string+;
+        | {strings} expr string;        // helper -- converted to string_expr by ASTFix by concatenating strings
     fun_arity = [name]:atom [arity]:integer;
     fun_clause
         = [name]:atom? [args]:expr* [guards]:expr* [body]:expr*;
     if_clause
-        = [guard]:expr [body]:expr*;
+        = [guards]:expr* [body]:expr*;
     case_clause
-        = [pattern]:expr [guard]:expr? [body]:expr*;
+        = [pattern]:expr [guards]:expr* [body]:expr*;
     rec_fields = [name]:atom [value]:expr?;
     rec_update_fields = [name]:atom expr;
     boolop = {lt} | {gt} | {le} | {ge} | {equiv} | {nequiv} | {eq} | {neq};

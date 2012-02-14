@@ -48,11 +48,11 @@ public class Util {
 					public void defaultCase(Node n) {
 						if (n instanceof AIntegerExpr || n instanceof ADecimalExpr || n instanceof AAtomExpr || n instanceof AAltAtomExpr || n instanceof AVarExpr || n instanceof ACharExpr || n instanceof AStringExpr || n instanceof AStringsExpr 
 								|| n instanceof AFileAttrExpr || n instanceof AModuleAttrExpr || n instanceof ACompileAttrExpr || n instanceof ACustomAttrExpr) {
-							setOut(n, n.toString());
+							setOut(n, n);
 						}
 					}
 					@Override public void caseAImportAttrExpr(AImportAttrExpr node) { setOut(node, node.getModule().getText()); }
-					public void caseARecordAttrExpr(ARecordAttrExpr node) { setOut(node, node.getType().toString()); }
+					public void caseARecordAttrExpr(ARecordAttrExpr node) { setOut(node, node.getType()); }
 					public void caseARecFields(ARecFields node) {
 						String ret = node.getName().getText();
 						if (node.getValue() != null) {
@@ -61,16 +61,17 @@ public class Util {
 						}
 						setOut(node, ret);
 					}
-					@Override public void caseAFunClause(AFunClause node) { setOut(node, node.getName().toString()); }
+					@Override public void caseAFunClause(AFunClause node) { setOut(node, node.getName()); }
 					@Override public void caseAListExpr(AListExpr node) { if (node.getElts().size() == 0) { setOut(node, "[]"); }}
 					@Override public void caseAFunArity(AFunArity node) { setOut(node, node.getName().getText() + "/" + node.getArity().getText()); }
 				};
+				String s = "";
+				
 				n.apply(nodeText);
-				String s = (String) nodeText.getOut(n);
-				if (s != null) {
-					return "(" + s.trim() + ")";
+				if (nodeText.getOut(n) != null) {
+					s = "(" + nodeText.getOut(n).toString().trim() + ")";
 				}
-				return "";
+				return s;
 			}
 			@Override public void defaultIn(Node node) {
 				append(node);
