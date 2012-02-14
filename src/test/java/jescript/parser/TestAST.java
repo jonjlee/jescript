@@ -75,69 +75,52 @@ public class TestAST {
 						)));
 	}
 	
-	public void funArgExprs() {
-		testModule("main(X=1) -> ok.",
-				new AFunExpr(Arrays.asList((PFunClause) new AFunClause(
-						atomTok("main"),
-						Arrays.asList((PExpr) new AMatchExpr(var("X"), integer(1))),
-						none,
-						atoms("ok")))));
-		testModule("main(\"A\"++\"B\") -> ok.",
-				new AFunExpr(Arrays.asList((PFunClause) new AFunClause(
-						atomTok("main"),
-						Arrays.asList((PExpr) new AListopExpr(string("A"), new AConcListop(), string("B"))),
-						none,
-						atoms("ok")))));
-		testModule("main(1+2) -> ok.",
-				new AFunExpr(Arrays.asList((PFunClause) new AFunClause(
-						atomTok("main"),
-						Arrays.asList((PExpr) new AArithopExpr(integer(1), new APlusArithop(), integer(2))),
-						none,
-						atoms("ok")))));
-		testModule("main(1*2) -> ok.",
-				new AFunExpr(Arrays.asList((PFunClause) new AFunClause(
-						atomTok("main"),
-						Arrays.asList((PExpr) new AArithopExpr(integer(1), new ATimesArithop(), integer(2))),
-						none,
-						atoms("ok")))));
-		testModule("main(-1) -> ok.",
-				new AFunExpr(Arrays.asList((PFunClause) new AFunClause(
-						atomTok("main"),
-						Arrays.asList((PExpr) new APreopExpr(new ANegPreop(), integer(1))),
-						none,
-						atoms("ok")))));
-		testModule("main({1}) -> ok.",
-				new AFunExpr(Arrays.asList((PFunClause) new AFunClause(
-						atomTok("main"),
-						Arrays.asList((PExpr) new ATupleExpr(integers(1))),
-						none,
-						atoms("ok")))));
-		testModule("main(#person{name=1}) -> ok.",
-				new AFunExpr(Arrays.asList((PFunClause) new AFunClause(
-						atomTok("main"),
-						Arrays.asList((PExpr) new ARecMatchExpr(atomTok("person"), Arrays.asList((PRecFields) new ARecFields(atomTok("name"), integer(1))))),
-						none,
-						atoms("ok")))));
-		testModule("main([1|2]) -> ok.",
-				new AFunExpr(Arrays.asList((PFunClause) new AFunClause(
-						atomTok("main"),
-						Arrays.asList((PExpr) new AListExpr(integers(1), new AIntegerExpr(intTok(2)))),
-						none,
-						atoms("ok")))));
-		testModule("main([]) -> ok.",
-				new AFunExpr(Arrays.asList((PFunClause) new AFunClause(
-						atomTok("main"),
-						Arrays.asList((PExpr) new AListExpr(none, null)),
-						none,
-						atoms("ok")))));
-		testModule("main((ok)) -> ok.",
-				new AFunExpr(Arrays.asList((PFunClause) new AFunClause(
-						atomTok("main"),
-						atoms("ok"),
-						none,
-						atoms("ok")))));
+	public void funArgs() {
+		testFunArgs("\"A\"++\"B\"", new AListopExpr(string("A"), new AConcListop(), string("B")));
+		testFunArgs("1+2", new AArithopExpr(integer(1), new APlusArithop(), integer(2)));
+		testFunArgs("1*2", new AArithopExpr(integer(1), new ATimesArithop(), integer(2)));
+		testFunArgs("{1}", new ATupleExpr(integers(1)));
+		testFunArgs("#person{name=1}", new ARecMatchExpr(atomTok("person"), Arrays.asList((PRecFields) new ARecFields(atomTok("name"), integer(1)))));
+		testFunArgs("[1|2]", new AListExpr(integers(1), new AIntegerExpr(intTok(2))));
+		testFunArgs("[]", new AListExpr(none, null));
+		testFunArgs("(ok)",  atoms("ok"));
+	}
+	
+	public void invalidFunArgs() {
+		testInvalidModule("f(X=2, Y=X*2) -> ok.");
+	}
+	
+	public void funGuards() {
+		testGuards("true", atom("true"));
+		testGuards("true, true", atom("true"), atom("true"));
+		testGuards("X<1, Y==0", 
+				new ABoolopExpr(var("X"), new ALtBoolop(), integer(1)), 
+				new ABoolopExpr(var("Y"), new AEqBoolop(), integer(0)));
+		testGuards("X+1 == Y*2", 
+				new ABoolopExpr(
+						new AArithopExpr(var("X"), new APlusArithop(), integer(1)), 
+						new AEqBoolop(), 
+						new AArithopExpr(var("Y"), new ATimesArithop(), integer(2))));
+		testGuards("-X", new APreopExpr(new ANegPreop(), var("X")));
+		testGuards("is_integer(X)", new AApplyExpr(null, atom("is_integer"), vars("X")));
+		testGuards("X#num.val==1", 
+				new ABoolopExpr(
+						new ARecReadExpr(var("X"), atomTok("num"), atomTok("val")),
+						new AEqBoolop(),
+						integer(1)));
+		testGuards("X, (X)", var("X"), var("X"));
+		testGuards("[1|2], []",
+				new AListExpr(integers(1), integer(2)),
+				new AListExpr(none, null));
+		testGuards("{1}", new ATupleExpr(integers(1)));
 	}
 
+	public void invalidFunGuards() {
+		testInvalidModule("f(X) when X=1 -> ok.");
+		testInvalidModule("f(X) when m:f(1) -> ok.");
+	}
+
+	// AST construction convenience methods
 	private TAtom atomTok(String atom) {
 		return new TAtom(atom);
 	}
@@ -147,10 +130,13 @@ public class TestAST {
 	private TString strTok(String s) {
 		return new TString('"' + s + '"');
 	}
+	private PExpr atom(String atom) {
+		return new AAtomExpr(atomTok(atom));
+	}
 	private List<PExpr> atoms(String... atoms) {
 		List<PExpr> exprs = new LinkedList<PExpr>();
 		for (String atom : atoms) {
-			exprs.add(new AAtomExpr(atomTok(atom)));
+			exprs.add(atom(atom));
 		}
 		return exprs;
 	}
@@ -178,6 +164,7 @@ public class TestAST {
 		return exprs;
 	}
 	
+	// Tester convenience methods
 	private void testInput(String input, Node n) {
 		Node s = parse(input);
 		assertValid(s);
@@ -191,12 +178,36 @@ public class TestAST {
 	private void testModule(String input, PExpr n) { 
 		testModule(input, Arrays.asList(n)); 
 	}
+	private void testFunArgs(String args, List<PExpr> ast) {
+		testModule("main(" + args + ") -> ok.",
+				new AFunExpr(Arrays.asList((PFunClause) new AFunClause(
+						atomTok("main"),
+						ast,
+						none,
+						atoms("ok")))));
+	}
+	private void testFunArgs(String args, PExpr... ast) {
+		testFunArgs(args, Arrays.asList(ast));
+	}
+	private void testGuards(String guards, PExpr... ast) {
+		testModule("main() when " + guards + " -> ok.",
+				new AFunExpr(Arrays.asList((PFunClause) new AFunClause(
+						atomTok("main"),
+						none,
+						Arrays.asList(ast),
+						atoms("ok")))));
+	}
+	
+	private void testInvalidInput(String input) { assertInvalid(parse(input)); }
+	private void testInvalidModule(String input) { testInvalidInput("-module(m).\n" + input); }
 
+	// Asserts
 	private void assertASTEquals(Node start, Node expected) {
 		Node root = ((Start) start).getPExpr();
 		assertEquals(nodeToString(root), nodeToString(expected));
 	}
 	
+	// Parse input into AST
 	private Node parse(String input) {
 		try {
 			Lexer l = new Lexer(new PushbackReader(new StringReader(input), 1024));

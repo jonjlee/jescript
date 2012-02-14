@@ -219,41 +219,41 @@ Productions
         = {one} guard_expr {-> [guard_expr.expr]}
         | {many} guard_exprs comma guard_expr {-> [guard_exprs.expr, guard_expr.expr]};
     guard_expr {-> expr}
-        = guard_primary_expr {-> guard_primary_expr.expr};
-//         = guard_compare_expr;
-//     guard_compare_expr {-> expr}
-//         = {relational} [left]:guard_addition_shift_expr [op]:relational_op [right]:guard_addition_shift_expr
-//         | {equality} [left]:guard_addition_shift_expr [op]:equality_op [right]:guard_addition_shift_expr
-//         | {simple} guard_addition_shift_expr;
-//     guard_addition_shift_expr {-> expr}
-//         = {addition} [left]:guard_addition_shift_expr [op]:addition_op [right]:guard_times_expr
-//         | {shift} [left]:guard_addition_shift_expr [op]:shift_op [right]:guard_times_expr
-//         | {simple} guard_times_expr;
-//     guard_times_expr {-> expr}
-//         = [left]:guard_times_expr [op]:mult_op [right]:guard_preop_expr
-//         | {simple} guard_preop_expr;
-//     guard_preop_expr {-> expr}
-//         = [op]:pre_op [expr]:guard_apply_expr
-//         | {simple} guard_apply_expr;
-//     guard_apply_expr {-> expr}
-//         = {fun} [fun]:atom lparen [args]:guard_exprs? rparen
-//         | {record} guard_record_expr
-//         | {simple} guard_primary_expr;
-//     guard_record_expr {-> expr}
-//         = guard_primary_expr? pound [record]:atom dot [field]:atom;
+        = guard_compare_expr {-> guard_compare_expr.expr};
+    guard_compare_expr {-> expr}
+        = {relational} [left]:guard_addition_shift_expr [op]:relational_op [right]:guard_addition_shift_expr {-> New expr.boolop(left.expr, op.boolop, right.expr)}
+        | {equality} [left]:guard_addition_shift_expr [op]:equality_op [right]:guard_addition_shift_expr {-> New expr.boolop(left.expr, op.boolop, right.expr)}
+        | {simple} guard_addition_shift_expr {-> guard_addition_shift_expr.expr};
+    guard_addition_shift_expr {-> expr}
+        = {addition} [left]:guard_addition_shift_expr [op]:addition_op [right]:guard_times_expr {-> New expr.arithop(left.expr, op.arithop, right.expr)}
+        | {shift} [left]:guard_addition_shift_expr [op]:shift_op [right]:guard_times_expr {-> New expr.arithop(left.expr, op.arithop, right.expr)}
+        | {simple} guard_times_expr {-> guard_times_expr.expr};
+    guard_times_expr {-> expr}
+        = [left]:guard_times_expr [op]:mult_op [right]:guard_preop_expr {-> New expr.arithop(left.expr, op.arithop, right.expr)}
+        | {simple} guard_preop_expr {-> guard_preop_expr.expr};
+    guard_preop_expr {-> expr}
+        = [op]:pre_op [expr]:guard_bif_expr {-> New expr.preop(op.preop, expr.expr)}
+        | {simple} guard_bif_expr {-> guard_bif_expr.expr};
+    guard_bif_expr {-> expr}
+        // compiler needs check that fun is an allowed BIF, since grammar doesn't restrict: http://www.erlang.org/doc/reference_manual/expressions.html#id79005
+        = {fun} [fun]:atom lparen [args]:guard_exprs? rparen {-> New expr.apply(Null, New expr.atom(fun), [args.expr])}
+        | {record} guard_record_expr {-> guard_record_expr.expr}
+        | {simple} guard_primary_expr {-> guard_primary_expr.expr};
+    guard_record_expr {-> expr}
+        = guard_primary_expr? pound [record]:atom dot [field]:atom {-> New expr.rec_read(guard_primary_expr.expr, record, field)};
     guard_primary_expr {-> expr}
-        = {literal} literal {-> literal.expr};
-//         | {var} var
-//         | {nil} nil
-//         | {list} lbrack guard_exprs guard_list_skeleton_tail? rbrack
-//         | {record} lbrace guard_exprs? rbrace
-//         | {parens} lparen guard_expr rparen;
-//     guard_list_skeleton_tail
-//         = bar guard_expr;
-//   
-//     // -------------------------------------------------------
-//     // Expressions
-//     // -------------------------------------------------------
+        = {literal} literal {-> literal.expr}
+        | {var} var {-> New expr.var(var)}
+        | {nil} nil {-> New expr.list([], Null)}
+        | {list} lbrack guard_exprs guard_list_skeleton_tail? rbrack {-> New expr.list([guard_exprs.expr], guard_list_skeleton_tail.expr)}
+        | {tuple} lbrace guard_exprs? rbrace {-> New expr.tuple([guard_exprs.expr])}
+        | {parens} lparen guard_expr rparen {-> guard_expr.expr};
+    guard_list_skeleton_tail {-> expr}
+        = bar guard_expr {-> guard_expr.expr};
+  
+    // -------------------------------------------------------
+    // Expressions
+    // -------------------------------------------------------
     exprs {-> expr*}
         = {one} expr {-> [expr.expr]}
         | {many} exprs comma expr {-> [exprs.expr, expr.expr]};
@@ -331,8 +331,8 @@ Productions
         | {import} import {-> New expr.alt_atom(New alt_atom.import())}
         | {compile} compile {-> New expr.alt_atom(New alt_atom.compile())}
         | {record} record {-> New expr.alt_atom(New alt_atom.record())};
-//  relational_op = {lt} lt | {gt} gt | {le} le | {ge} ge;
-//  equality_op = {equiv} equiv | {nequiv} nequiv | {eq} eqeq | {neq} neq;
+    relational_op {-> boolop} = {lt} lt {-> New boolop.lt()} | {gt} gt {-> New boolop.gt()} | {le} le {-> New boolop.le()} | {ge} ge {-> New boolop.ge()};
+    equality_op {-> boolop} = {equiv} equiv {-> New boolop.equiv()} | {nequiv} nequiv {-> New boolop.nequiv()} | {eq} eqeq {-> New boolop.eq()} | {neq} neq {-> New boolop.neq()};
     list_conc_op {-> listop} = {conc} plusplus {-> New listop.conc()} | {del} minusminus {-> New listop.del()};
     addition_op {-> arithop} = {plus} plus {-> New arithop.plus()} | {minus} dash {-> New arithop.minus()} | {bor} bor {-> New arithop.bor()} | {bxor} bxor {-> New arithop.bxor()};
     shift_op {-> arithop} = {bsl} bsl  {-> New arithop.bsl()} | {bsr} bsr {-> New arithop.bsr()};
